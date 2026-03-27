@@ -7,29 +7,63 @@ import { getConcepts, getSessionId } from "@/lib/api";
 export default function Home() {
   const router = useRouter();
   const [concepts, setConcepts] = useState<string[]>([]);
+  const [hasProfile, setHasProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const checkSession = async () => {
+    const checkProfile = async () => {
       const sessionId = getSessionId();
-      // Check if user has completed onboarding by trying to get concepts
-      const result = await getConcepts();
-      if (result.data) {
-        setConcepts(result.data.concepts);
+
+      // Check if profile exists by trying to get explanation
+      // If API returns 404 for profile, user hasn't completed onboarding
+      try {
+        // Try to get concepts (always available)
+        const conceptsResult = await getConcepts();
+        if (conceptsResult.data) {
+          setConcepts(conceptsResult.data.concepts);
+        }
+
+        // Try to get an explanation to verify profile exists
+        const explanationResult = await fetch(
+          `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/explain`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: sessionId,
+              concept: "acceleration",
+            }),
+          }
+        );
+
+        // If explanation fetch succeeds, profile exists
+        if (explanationResult.ok) {
+          setHasProfile(true);
+        } else {
+          setHasProfile(false);
+        }
+      } catch (error) {
+        // Network error, assume no profile
+        setHasProfile(false);
       }
+
       setIsLoading(false);
     };
 
-    checkSession();
+    checkProfile();
   }, []);
 
   const handleConceptClick = (concept: string) => {
     router.push(`/learn/${concept}`);
   };
 
+  const handleStartOnboarding = () => {
+    router.push("/onboarding");
+  };
+
   const handleNewSession = () => {
     localStorage.removeItem("lexicon_session_id");
-    router.push("/onboarding");
+    window.location.reload();
   };
 
   return (
@@ -45,12 +79,16 @@ export default function Home() {
         <div className="text-center py-12">
           <p className="text-gray-600">Loading...</p>
         </div>
-      ) : concepts.length > 0 ? (
+      ) : hasProfile ? (
+        // User has completed onboarding - Show concepts
         <div className="space-y-8">
           <div className="card">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
-              Choose a Concept
+              🎓 Choose a Concept
             </h2>
+            <p className="text-gray-600 mb-6">
+              Pick a topic to learn with your personalized explanations
+            </p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {concepts.map((concept) => (
                 <button
@@ -60,7 +98,7 @@ export default function Home() {
                 >
                   <div className="text-4xl mb-3">
                     {concept === "acceleration" && "⚡"}
-                    {concept === "energy" && "⚡"}
+                    {concept === "energy" && "💡"}
                     {concept === "probability" && "🎲"}
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 capitalize">
@@ -82,26 +120,34 @@ export default function Home() {
               onClick={handleNewSession}
               className="btn-secondary py-2 px-6 text-sm"
             >
-              Start New Session
+              Reset Profile
             </button>
           </div>
         </div>
       ) : (
-        <div className="card text-center space-y-6">
+        // User hasn't completed onboarding yet - Show welcome screen
+        <div className="card text-center space-y-6 max-w-2xl mx-auto">
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-2">
-              Welcome to Lexicon!
+              Welcome to Lexicon! 👋
             </h2>
-            <p className="text-gray-600 text-lg mb-6">
+            <p className="text-gray-600 text-lg mb-4">
               Let's find the explanation style that works best for you.
             </p>
+            <p className="text-gray-500 text-sm">
+              We'll ask you one question about how you prefer to learn, then
+              personalize all explanations just for you.
+            </p>
           </div>
+
           <button
-            onClick={() => router.push("/onboarding")}
+            onClick={handleStartOnboarding}
             className="btn-primary py-3 px-8 text-lg inline-block"
           >
-            Start Learning →
+            Start Personalization →
           </button>
+
+          <p className="text-sm text-gray-500">Takes about 1 minute</p>
         </div>
       )}
     </div>

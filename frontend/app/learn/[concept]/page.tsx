@@ -57,10 +57,19 @@ export default function LearnPage() {
       return;
     }
 
+    // Profile updated successfully, reload explanation to show improved match
     setPageState("submitted");
-    setTimeout(() => {
-      router.push("/");
-    }, 2000);
+
+    setTimeout(async () => {
+      // Fetch the new best-matched explanation with updated profile
+      const newExplanation = await getExplanation(concept);
+      if (newExplanation.data) {
+        setExplanation(newExplanation.data);
+        setPageState("explanation");
+      }
+      // Reset submitting state
+      setIsSubmitting(false);
+    }, 1500);
   };
 
   return (

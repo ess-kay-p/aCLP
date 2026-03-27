@@ -80,7 +80,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === "input" && (
+        {step === "input" && !isLoading && (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               Step 1: Tell us what you want to learn
@@ -92,7 +92,23 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === "variants" && variants && (
+        {step === "input" && isLoading && (
+          <div className="text-center py-12 space-y-4">
+            <div className="flex justify-center">
+              <div className="animate-spin">
+                <div className="text-4xl">✨</div>
+              </div>
+            </div>
+            <p className="text-gray-700 font-medium">
+              Generating explanation variants...
+            </p>
+            <p className="text-gray-500 text-sm">
+              This usually takes 5-10 seconds
+            </p>
+          </div>
+        )}
+
+        {step === "variants" && variants && !isLoading && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-800">
@@ -114,9 +130,19 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {isLoading && step === "variants" && (
-          <div className="text-center py-8">
-            <p className="text-gray-600">Creating your personalized profile...</p>
+        {step === "variants" && isLoading && (
+          <div className="text-center py-12 space-y-4">
+            <div className="flex justify-center">
+              <div className="animate-spin">
+                <div className="text-4xl">⚙️</div>
+              </div>
+            </div>
+            <p className="text-gray-700 font-medium">
+              Creating your personalized profile...
+            </p>
+            <p className="text-gray-500 text-sm">
+              Just a moment
+            </p>
           </div>
         )}
       </div>
