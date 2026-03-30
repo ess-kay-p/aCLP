@@ -15,7 +15,9 @@ type PageState = "loading" | "explanation" | "rating" | "submitted" | "error";
 export default function LearnPage() {
   const router = useRouter();
   const params = useParams();
-  const concept = params.concept as string;
+  const rawConcept = params.concept as string;
+  // Decode the concept name to handle special characters like apostrophes
+  const concept = decodeURIComponent(rawConcept);
 
   const [pageState, setPageState] = useState<PageState>("loading");
   const [explanation, setExplanation] = useState<ExplanationResponse | null>(null);
