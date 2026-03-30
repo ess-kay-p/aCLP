@@ -64,15 +64,14 @@ export default function LearnerProfileChart({
               <PolarGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <PolarAngleAxis
                 dataKey="name"
-                tick={{ fill: "#666", fontSize: 11 }}
+                tick={false}
                 angle={0}
                 orientation="outer"
               />
               <PolarRadiusAxis
                 angle={0}
                 domain={[0, 1]}
-                ticks={[0, 0.25, 0.5, 0.75, 1]}
-                tick={{ fill: "#999", fontSize: 9 }}
+                tick={false}
               />
               <Radar
                 name="Profile"
