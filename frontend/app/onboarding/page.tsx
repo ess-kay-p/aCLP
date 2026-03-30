@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getQuestions, submitAnswers, generatePersonalizedVariants, getSessionId } from "@/lib/api";
-import LearnerProfileChart from "@/components/LearnerProfileChart";
 
 interface Question {
   id: number;
@@ -18,7 +17,7 @@ interface Variant {
   text: string;
 }
 
-type OnboardingStep = "questions" | "profile" | "topic" | "variants" | "loading";
+type OnboardingStep = "questions" | "topic" | "variants" | "loading";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -33,9 +32,6 @@ export default function OnboardingPage() {
 
   // Variants step
   const [variants, setVariants] = useState<Variant[]>([]);
-
-  // Profile vector (from questionnaire)
-  const [profileVector, setProfileVector] = useState<number[]>([]);
 
   // General state
   const [step, setStep] = useState<OnboardingStep>("loading");
@@ -69,45 +65,17 @@ export default function OnboardingPage() {
   // Handle question option selection
   const handleSelectOption = (optionIndex: number) => {
     const currentQuestion = questions[currentQuestionIndex];
-    const newAnswers = {
+    setAnswers({
       ...answers,
       [currentQuestion.id]: optionIndex,
-    };
-    setAnswers(newAnswers);
+    });
 
-    // Move to next question or show profile
+    // Move to next question or move to topic step
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Last question - calculate and show profile
-      calculateAndShowProfile(newAnswers);
+      setStep("topic");
     }
-  };
-
-  // Calculate profile from answers and show profile chart
-  const calculateAndShowProfile = async (finalAnswers: Record<number, number>) => {
-    setIsLoading(true);
-    try {
-      const sessionId = getSessionId();
-      const result = await submitAnswers(sessionId, finalAnswers);
-      if (result.error) {
-        setError(`Error creating profile: ${result.error}`);
-        setIsLoading(false);
-        return;
-      }
-      if (result.data) {
-        setProfileVector(result.data.vector);
-        setStep("profile");
-      }
-    } catch (err) {
-      setError("Failed to create profile");
-    }
-    setIsLoading(false);
-  };
-
-  // Move from profile to topic
-  const handleContinueToTopic = () => {
-    setStep("topic");
   };
 
   // Handle topic submission
@@ -123,7 +91,15 @@ export default function OnboardingPage() {
     try {
       const sessionId = getSessionId();
 
-      // Generate variants based on profile + topic
+      // First, create the initial profile from questionnaire answers
+      const profileResult = await submitAnswers(sessionId, answers);
+      if (profileResult.error) {
+        setError(`Error creating profile: ${profileResult.error}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Then generate variants based on profile + topic
       const variantsResult = await generatePersonalizedVariants(sessionId, topic);
       if (variantsResult.error) {
         setError(`Error generating variants: ${variantsResult.error}`);
@@ -173,11 +149,9 @@ export default function OnboardingPage() {
   const handleBack = () => {
     if (step === "questions" && currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
-    } else if (step === "profile") {
+    } else if (step === "topic") {
       setStep("questions");
       setCurrentQuestionIndex(questions.length - 1);
-    } else if (step === "topic") {
-      setStep("profile");
     } else if (step === "variants") {
       setStep("topic");
     }
@@ -280,52 +254,11 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 2: Profile Visualization */}
-        {step === "profile" && !isLoading && (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Step 2: Your Learning Profile
-            </h2>
-            <p className="text-gray-600 mb-6">
-              Based on your answers, here's your personalized learning profile. The chart shows your preferences across 8 learning dimensions.
-            </p>
-
-            <LearnerProfileChart vector={profileVector} />
-
-            <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg mb-6">
-              <h3 className="font-semibold text-gray-800 mb-2">What this means:</h3>
-              <ul className="text-sm text-gray-700 space-y-1">
-                <li>• <strong>Higher values</strong> = stronger preference for that learning style</li>
-                <li>• All values start at 0.5 baseline and adapt based on your answers</li>
-                <li>• Your explanations will be customized to match your profile</li>
-                <li>• Your profile improves as you rate explanations</li>
-              </ul>
-            </div>
-
-            <div className="flex gap-4">
-              <button
-                onClick={handleBack}
-                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                ← Back
-              </button>
-              <button
-                onClick={handleContinueToTopic}
-                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                disabled={isLoading}
-              >
-                Continue →
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: Topic Input */}
+        {/* STEP 2: Topic Input */}
         {step === "topic" && !isLoading && (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Step 3: What would you like to learn about?
+              Step 2: What would you like to learn about?
             </h2>
             <p className="text-gray-600 mb-6">
               Enter a topic or question you'd like to explore. We'll generate personalized explanations based on your learning style.
@@ -376,11 +309,11 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* STEP 4: Variant Selection */}
+        {/* STEP 3: Variant Selection */}
         {step === "variants" && !isLoading && variants.length > 0 && (
           <div>
             <h2 className="text-2xl font-bold text-gray-800 mb-4">
-              Step 4: Choose your favorite explanation
+              Step 3: Choose your favorite explanation
             </h2>
             <p className="text-gray-600 mb-6">
               We've generated 4 different explanations for you. Pick the one that resonates most with your learning style.

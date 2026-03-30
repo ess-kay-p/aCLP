@@ -66,6 +66,23 @@ async def get_questionnaire():
     return QuestionnaireResponse(questions=questionnaire["questions"])
 
 
+@router.get("/profile/{session_id}", response_model=StudentProfile)
+async def get_student_profile(session_id: str) -> StudentProfile:
+    """
+    Get the student's learner profile vector by session ID.
+
+    Returns the 8D vector for displaying on the profile chart.
+    """
+    vector = get_student_vector(session_id)
+    if vector is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Student profile not found. Complete onboarding first.",
+        )
+
+    return StudentProfile(session_id=session_id, vector=vector)
+
+
 @router.post("/submit", response_model=StudentProfile)
 async def submit_answers(request: OnboardingAnswers) -> StudentProfile:
     """

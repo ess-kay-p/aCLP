@@ -2,13 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getConcepts, getSessionId } from "@/lib/api";
+import { getConcepts, getSessionId, getStudentProfile } from "@/lib/api";
+import LearnerProfileChart from "@/components/LearnerProfileChart";
 
 export default function Home() {
   const router = useRouter();
   const [concepts, setConcepts] = useState<string[]>([]);
   const [hasProfile, setHasProfile] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [profileVector, setProfileVector] = useState<number[]>([]);
 
   useEffect(() => {
     const checkProfile = async () => {
@@ -23,7 +25,7 @@ export default function Home() {
           setConcepts(conceptsResult.data.concepts);
         }
 
-        // Try to get an explanation to verify profile exists
+        // Try to get an explanation to verify profile exists and get the vector
         const explanationResult = await fetch(
           `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/explain`,
           {
@@ -39,6 +41,17 @@ export default function Home() {
         // If explanation fetch succeeds, profile exists
         if (explanationResult.ok) {
           setHasProfile(true);
+
+          // Try to fetch profile vector for the chart
+          try {
+            const profileResult = await getStudentProfile(sessionId);
+            if (profileResult.data) {
+              setProfileVector(profileResult.data.vector);
+            }
+          } catch (err) {
+            // Profile might not have vector yet, that's ok
+            console.log("Could not fetch profile vector");
+          }
         } else {
           setHasProfile(false);
         }
@@ -80,8 +93,14 @@ export default function Home() {
           <p className="text-gray-600">Loading...</p>
         </div>
       ) : hasProfile ? (
-        // User has completed onboarding - Show concepts
+        // User has completed onboarding - Show profile + concepts
         <div className="space-y-8">
+          {profileVector.length > 0 && (
+            <div className="card">
+              <LearnerProfileChart vector={profileVector} />
+            </div>
+          )}
+
           <div className="card">
             <h2 className="text-2xl font-bold text-gray-800 mb-6">
               🎓 Choose a Concept
