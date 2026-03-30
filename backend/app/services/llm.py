@@ -2,7 +2,7 @@
 import os
 import json
 import litellm
-from typing import Dict
+from typing import Dict, Optional, List
 
 # Configure LiteLLM
 litellm.api_key = os.getenv("LITELLM_API_KEY", "")
@@ -11,17 +11,69 @@ litellm.api_base = os.getenv("LITELLM_BASE_URL", "https://api.openai.com/v1")
 MODEL = os.getenv("LITELLM_MODEL", "openai/gpt-3.5-turbo")
 
 
-def generate_explanation_variants(topic: str) -> Dict[str, str]:
+def _get_learning_style_guidance(student_vector: Optional[List[float]]) -> str:
+    """
+    Generate guidance text based on student's learning preferences.
+
+    Args:
+        student_vector: 8D vector with dimensions:
+            [sports, systems, visual, narrative, analogy, step_by_step, academic, simple]
+
+    Returns:
+        Guidance string for the LLM about the student's preferences
+    """
+    if not student_vector or len(student_vector) < 8:
+        return ""
+
+    # Map vector dimensions to preference descriptions
+    from ..services.vector_ops import DIMENSIONS
+
+    guidance_parts = []
+
+    # Check which dimensions are strong (> 0.6)
+    strong_prefs = [DIMENSIONS[i] for i, val in enumerate(student_vector) if val > 0.6]
+
+    if "sports" in strong_prefs:
+        guidance_parts.append("This learner enjoys sports analogies and game-based metaphors")
+    if "narrative" in strong_prefs:
+        guidance_parts.append("This learner prefers story-based explanations and real-world scenarios")
+    if "step_by_step" in strong_prefs:
+        guidance_parts.append("This learner prefers clear, numbered, sequential instructions")
+    if "visual" in strong_prefs:
+        guidance_parts.append("This learner prefers descriptive, visual explanations")
+    if "analogy" in strong_prefs:
+        guidance_parts.append("This learner enjoys metaphors and analogies")
+    if "systems" in strong_prefs:
+        guidance_parts.append("This learner likes understanding how things connect and work together")
+    if "academic" in strong_prefs:
+        guidance_parts.append("This learner prefers technical, formal language and precise definitions")
+    if "simple" in strong_prefs:
+        guidance_parts.append("This learner prefers simple, everyday language over complex terminology")
+
+    if guidance_parts:
+        return "\n".join([f"- {part}" for part in guidance_parts])
+    return ""
+
+
+def generate_explanation_variants(
+    topic: str,
+    student_vector: Optional[List[float]] = None,
+) -> Dict[str, str]:
     """
     Generate 4 explanation variants for a topic using LiteLLM.
 
     Args:
         topic: The user's question or topic
+        student_vector: Optional 8D vector describing learner preferences
 
     Returns:
         Dict with keys: "sports", "step_by_step", "narrative", "technical"
     """
-    prompt = f"""Given the topic or question: "{topic}"
+    # Get personalized guidance if vector is provided
+    learning_guidance = _get_learning_style_guidance(student_vector)
+
+    # Build prompt with optional personalization
+    prompt_base = f"""Given the topic or question: "{topic}"
 
 Generate 4 explanations of this concept, each in a DIFFERENT style:
 
@@ -32,6 +84,16 @@ Generate 4 explanations of this concept, each in a DIFFERENT style:
 
 Return ONLY a JSON object with these exact keys: {{"sports": "...", "step_by_step": "...", "narrative": "...", "technical": "..."}}
 Do not include any other text or markdown formatting."""
+
+    if learning_guidance:
+        prompt = f"""Student learning preferences:
+{learning_guidance}
+
+{prompt_base}
+
+When generating explanations, keep these preferences in mind and tailor the explanations accordingly."""
+    else:
+        prompt = prompt_base
 
     try:
         response = litellm.completion(

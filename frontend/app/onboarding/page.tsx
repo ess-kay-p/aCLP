@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getQuestions, submitAnswers, getSessionId } from "@/lib/api";
+import { getQuestions, submitAnswers, generatePersonalizedVariants, getSessionId } from "@/lib/api";
 
 interface Question {
   id: number;
@@ -12,15 +12,33 @@ interface Question {
   }>;
 }
 
+interface Variant {
+  style: string;
+  text: string;
+}
+
+type OnboardingStep = "questions" | "topic" | "variants" | "loading";
+
 export default function OnboardingPage() {
   const router = useRouter();
+
+  // Questions step
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<number, number>>({});
+
+  // Topic step
+  const [topic, setTopic] = useState("");
+
+  // Variants step
+  const [variants, setVariants] = useState<Variant[]>([]);
+
+  // General state
+  const [step, setStep] = useState<OnboardingStep>("loading");
   const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
 
+  // Load questions on mount
   useEffect(() => {
     const loadQuestions = async () => {
       try {
@@ -32,6 +50,7 @@ export default function OnboardingPage() {
         }
         if (result.data && result.data.questions) {
           setQuestions(result.data.questions);
+          setStep("questions");
           setIsLoading(false);
         }
       } catch (err) {
@@ -43,6 +62,7 @@ export default function OnboardingPage() {
     loadQuestions();
   }, []);
 
+  // Handle question option selection
   const handleSelectOption = (optionIndex: number) => {
     const currentQuestion = questions[currentQuestionIndex];
     setAnswers({
@@ -50,47 +70,94 @@ export default function OnboardingPage() {
       [currentQuestion.id]: optionIndex,
     });
 
-    // Move to next question or submit
+    // Move to next question or move to topic step
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      handleSubmit();
+      setStep("topic");
     }
   };
 
-  const handleSubmit = async () => {
-    setIsSubmitting(true);
+  // Handle topic submission
+  const handleTopicSubmit = async () => {
+    if (!topic.trim()) {
+      setError("Please enter a topic or question");
+      return;
+    }
+
+    setIsLoading(true);
     setError("");
 
     try {
       const sessionId = getSessionId();
-      const result = await submitAnswers(sessionId, answers);
 
+      // First, create the initial profile from questionnaire answers
+      const profileResult = await submitAnswers(sessionId, answers);
+      if (profileResult.error) {
+        setError(`Error creating profile: ${profileResult.error}`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Then generate variants based on profile + topic
+      const variantsResult = await generatePersonalizedVariants(sessionId, topic);
+      if (variantsResult.error) {
+        setError(`Error generating variants: ${variantsResult.error}`);
+        setIsLoading(false);
+        return;
+      }
+
+      if (variantsResult.data && variantsResult.data.variants) {
+        setVariants(variantsResult.data.variants);
+        setStep("variants");
+        setIsLoading(false);
+      }
+    } catch (err) {
+      setError("Failed to generate explanations");
+      setIsLoading(false);
+    }
+  };
+
+  // Handle variant selection
+  const handleSelectVariant = async (selectedStyle: string) => {
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const sessionId = getSessionId();
+
+      // Update profile based on selected variant
+      const result = await submitAnswers(sessionId, answers, selectedStyle);
       if (result.error) {
-        setError(`Error creating profile: ${result.error}`);
-        setIsSubmitting(false);
+        setError(`Error updating profile: ${result.error}`);
+        setIsLoading(false);
         return;
       }
 
       if (result.data) {
-        // Profile created successfully, redirect to home
+        // Profile updated, redirect to home
         setTimeout(() => {
           router.push("/");
         }, 500);
       }
     } catch (err) {
-      setError("Failed to create profile");
-      setIsSubmitting(false);
+      setError("Failed to complete onboarding");
+      setIsLoading(false);
     }
   };
 
   const handleBack = () => {
-    if (currentQuestionIndex > 0) {
+    if (step === "questions" && currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+    } else if (step === "topic") {
+      setStep("questions");
+      setCurrentQuestionIndex(questions.length - 1);
+    } else if (step === "variants") {
+      setStep("topic");
     }
   };
 
-  if (isLoading) {
+  if (isLoading && step === "loading") {
     return (
       <div className="container">
         <header className="text-center mb-12 pt-8">
@@ -121,9 +188,6 @@ export default function OnboardingPage() {
     );
   }
 
-  const currentQuestion = questions[currentQuestionIndex];
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
-
   return (
     <div className="container">
       <header className="text-center mb-12 pt-8">
@@ -140,29 +204,151 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {/* Progress bar */}
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-600">
-              Question {currentQuestionIndex + 1} of {questions.length}
-            </span>
-            <span className="text-sm font-medium text-gray-600">
-              {Math.round(progress)}%
-            </span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
-            <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
+        {/* STEP 1: Questions */}
+        {step === "questions" && !isLoading && (
+          <div>
+            {/* Progress bar */}
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-2">
+                <span className="text-sm font-medium text-gray-600">
+                  Question {currentQuestionIndex + 1} of {questions.length}
+                </span>
+                <span className="text-sm font-medium text-gray-600">
+                  {Math.round(((currentQuestionIndex + 1) / questions.length) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div
+                  className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${((currentQuestionIndex + 1) / questions.length) * 100}%` }}
+                />
+              </div>
+            </div>
 
-        {isSubmitting ? (
+            <h2 className="text-2xl font-bold text-gray-800 mb-8">
+              {questions[currentQuestionIndex].question}
+            </h2>
+
+            <div className="space-y-3 mb-6">
+              {questions[currentQuestionIndex].options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSelectOption(index)}
+                  disabled={isLoading}
+                  className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <span className="text-gray-900 font-medium">{option.text}</span>
+                </button>
+              ))}
+            </div>
+
+            {currentQuestionIndex > 0 && (
+              <button
+                onClick={handleBack}
+                className="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                ← Back
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* STEP 2: Topic Input */}
+        {step === "topic" && !isLoading && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Step 2: What would you like to learn about?
+            </h2>
+            <p className="text-gray-600 mb-6">
+              Enter a topic or question you'd like to explore. We'll generate personalized explanations based on your learning style.
+            </p>
+
+            <textarea
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              placeholder="e.g., How does photosynthesis work? What is gravity? How does compound interest affect my savings?"
+              className="w-full p-4 border border-gray-300 rounded-lg focus:outline-none focus:border-blue-500 mb-6"
+              rows={4}
+              disabled={isLoading}
+            />
+
+            <div className="flex gap-4">
+              <button
+                onClick={handleBack}
+                className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+                disabled={isLoading}
+              >
+                ← Back
+              </button>
+              <button
+                onClick={handleTopicSubmit}
+                className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
+                disabled={isLoading || !topic.trim()}
+              >
+                Generate Explanations →
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 Loading */}
+        {step === "topic" && isLoading && (
           <div className="text-center py-12 space-y-4">
             <div className="flex justify-center">
               <div className="animate-spin">
                 <div className="text-4xl">✨</div>
+              </div>
+            </div>
+            <p className="text-gray-700 font-medium">
+              Generating personalized explanations...
+            </p>
+            <p className="text-gray-500 text-sm">
+              This usually takes 5-10 seconds
+            </p>
+          </div>
+        )}
+
+        {/* STEP 3: Variant Selection */}
+        {step === "variants" && !isLoading && variants.length > 0 && (
+          <div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-4">
+              Step 3: Choose your favorite explanation
+            </h2>
+            <p className="text-gray-600 mb-6">
+              We've generated 4 different explanations for you. Pick the one that resonates most with your learning style.
+            </p>
+
+            <div className="space-y-4 mb-6">
+              {variants.map((variant, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSelectVariant(variant.style)}
+                  disabled={isLoading}
+                  className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <p className="font-bold text-gray-800 mb-2 capitalize">{variant.style.replace(/_/g, " ")}</p>
+                  <p className="text-gray-600 text-sm line-clamp-2">{variant.text}</p>
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={handleBack}
+              className="w-full px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
+              disabled={isLoading}
+            >
+              ← Back
+            </button>
+          </div>
+        )}
+
+        {/* Variants Loading */}
+        {step === "variants" && isLoading && (
+          <div className="text-center py-12 space-y-4">
+            <div className="flex justify-center">
+              <div className="animate-spin">
+                <div className="text-4xl">⚙️</div>
               </div>
             </div>
             <p className="text-gray-700 font-medium">
@@ -171,48 +357,6 @@ export default function OnboardingPage() {
             <p className="text-gray-500 text-sm">
               Just a moment
             </p>
-          </div>
-        ) : (
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-8">
-              {currentQuestion.question}
-            </h2>
-
-            <div className="space-y-3 mb-6">
-              {currentQuestion.options.map((option, index) => (
-                <button
-                  key={index}
-                  onClick={() => handleSelectOption(index)}
-                  disabled={isSubmitting}
-                  className="w-full p-4 text-left border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span className="text-gray-900 font-medium">
-                    {option.text}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            <div className="flex gap-4">
-              {currentQuestionIndex > 0 && (
-                <button
-                  onClick={handleBack}
-                  className="flex-1 px-4 py-2 text-gray-700 border border-gray-300 rounded hover:bg-gray-100 transition-colors disabled:opacity-50"
-                  disabled={isSubmitting}
-                >
-                  ← Back
-                </button>
-              )}
-              {currentQuestionIndex === questions.length - 1 && answers[currentQuestion.id] !== undefined && (
-                <button
-                  onClick={handleSubmit}
-                  className="flex-1 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50"
-                  disabled={isSubmitting}
-                >
-                  Complete Onboarding
-                </button>
-              )}
-            </div>
           </div>
         )}
       </div>
