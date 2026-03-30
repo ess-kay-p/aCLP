@@ -4,16 +4,16 @@ from typing import List
 
 
 class StudentProfile(BaseModel):
-    """Student profile with 12-dimensional vector."""
+    """Student profile with 8-dimensional vector."""
 
     session_id: str
-    vector: List[float]  # 12 dimensions
+    vector: List[float]  # 8 dimensions: [sports, systems, visual, narrative, analogy, step_by_step, academic, simple]
 
     class Config:
         json_schema_extra = {
             "example": {
                 "session_id": "abc123",
-                "vector": [1.0, 0.5, 0.0, 0.2, 1.0, 1.0, 0.0, 0.3, 0.0, 0.8, 0.2, 0.0]
+                "vector": [0.6, 0.5, 0.5, 0.7, 0.6, 0.5, 0.4, 0.6]
             }
         }
 

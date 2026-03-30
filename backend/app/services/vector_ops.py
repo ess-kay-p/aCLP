@@ -3,66 +3,95 @@ import numpy as np
 from typing import List
 
 
-# Vector dimension labels
+# Vector dimension labels (8D system)
 DIMENSIONS = [
-    "sports",           # 0
-    "science",          # 1
-    "music",            # 2
-    "systems",          # 3
-    "narrative",        # 4
-    "analogy",          # 5
-    "step_by_step",     # 6
-    "visual",           # 7
-    "mathematical",     # 8
-    "complexity_low",   # 9
-    "complexity_med",   # 10
-    "complexity_high",  # 11
+    "sports",           # 0 - Sports/game analogies
+    "systems",          # 1 - Systems thinking
+    "visual",           # 2 - Visual/descriptive
+    "narrative",        # 3 - Story-based
+    "analogy",          # 4 - Metaphor/analogy
+    "step_by_step",     # 5 - Sequential instructions
+    "academic",         # 6 - Formal/technical language
+    "simple",           # 7 - Simple/everyday language
 ]
 
 VECTOR_DIM = len(DIMENSIONS)
+VECTOR_INIT = 0.5  # Initial vector values
+VECTOR_MAX = 1.0   # Maximum vector value
 
 
 def create_zero_vector() -> List[float]:
-    """Create a zero vector of correct dimension."""
-    return [0.0] * VECTOR_DIM
+    """Create an initialized vector with baseline values (0.5 per dimension)."""
+    return [VECTOR_INIT] * VECTOR_DIM
+
+
+def create_vector_from_answers(answers: dict) -> List[float]:
+    """
+    Create a learner vector from questionnaire answers.
+
+    Args:
+        answers: Dict mapping question_id -> answer_value (0.0 to 1.0)
+
+    Returns:
+        8D vector with values bounded to [0.0, 1.0]
+    """
+    vector = create_zero_vector()
+
+    # Map question answers to vector dimensions
+    # This depends on the questionnaire structure
+    # For now, we'll update this once questionnaire is designed
+
+    # Clamp values to [0, 1.0]
+    vector = [min(max(v, 0.0), VECTOR_MAX) for v in vector]
+
+    return vector
 
 
 def create_style_vector(style: str) -> List[float]:
-    """Create a vector from a selected style."""
+    """
+    Create a vector from a selected style (legacy, for backward compatibility).
+    Maps old 5-style system to new 8D space.
+    """
     vector = create_zero_vector()
 
-    # Dimension index mapping
-    dim_map = {dim: i for i, dim in enumerate(DIMENSIONS)}
-
-    # Style -> dimensions mapping
+    # Style -> dimensions adjustment (added to baseline 0.5)
     style_mapping = {
         "sports": {
-            dim_map["sports"]: 1.0,
-            dim_map["analogy"]: 1.0,
-            dim_map["complexity_low"]: 0.8,
+            "sports": 0.3,      # Boost sports
+            "analogy": 0.2,
+            "simple": 0.1,
+            "academic": -0.2,
         },
         "step_by_step": {
-            dim_map["step_by_step"]: 1.0,
-            dim_map["systems"]: 0.7,
-            dim_map["complexity_med"]: 0.8,
+            "step_by_step": 0.3,
+            "systems": 0.2,
+            "academic": 0.1,
         },
         "narrative": {
-            dim_map["narrative"]: 1.0,
-            dim_map["analogy"]: 0.7,
-            dim_map["complexity_low"]: 0.8,
+            "narrative": 0.3,
+            "analogy": 0.2,
+            "simple": 0.1,
+            "academic": -0.2,
         },
         "technical": {
-            dim_map["science"]: 1.0,
-            dim_map["mathematical"]: 1.0,
-            dim_map["complexity_high"]: 1.0,
+            "academic": 0.3,
+            "systems": 0.2,
+            "simple": -0.3,
+        },
+        "visual": {
+            "visual": 0.3,
+            "narrative": 0.1,
+            "simple": 0.1,
         },
     }
 
     if style in style_mapping:
-        for dim_idx, value in style_mapping[style].items():
-            vector[dim_idx] = value
+        for dim_name, adjustment in style_mapping[style].items():
+            dim_idx = DIMENSIONS.index(dim_name) if dim_name in DIMENSIONS else -1
+            if dim_idx >= 0:
+                vector[dim_idx] = min(max(vector[dim_idx] + adjustment, 0.0), VECTOR_MAX)
 
-    return normalize_vector(vector)
+    return vector
 
 
 def normalize_vector(vector: List[float]) -> List[float]:
@@ -111,4 +140,7 @@ def update_student_vector(
     # Update: add (learning_rate * delta * explanation) to current vector
     updated = current + learning_rate * rating_delta * explanation
 
-    return normalize_vector(updated.tolist())
+    # Clamp to [0, 1.0]
+    updated = np.clip(updated, 0.0, VECTOR_MAX)
+
+    return updated.tolist()

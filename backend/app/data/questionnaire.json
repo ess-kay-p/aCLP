@@ -1,0 +1,204 @@
+{
+  "questions": [
+    {
+      "id": 1,
+      "question": "When learning something new, I prefer:",
+      "options": [
+        {
+          "text": "Real-world examples and stories",
+          "dimension_updates": {
+            "narrative": 0.2,
+            "analogy": 0.1
+          }
+        },
+        {
+          "text": "Abstract concepts and formulas",
+          "dimension_updates": {
+            "academic": 0.2,
+            "systems": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "question": "Which explanation style appeals to you most?",
+      "options": [
+        {
+          "text": "Step-by-step instructions I can follow",
+          "dimension_updates": {
+            "step_by_step": 0.2,
+            "simple": 0.1
+          }
+        },
+        {
+          "text": "Comparing to something I already know",
+          "dimension_updates": {
+            "analogy": 0.2,
+            "narrative": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "question": "How do you prefer to visualize information?",
+      "options": [
+        {
+          "text": "Diagrams, charts, and visual descriptions",
+          "dimension_updates": {
+            "visual": 0.2,
+            "systems": 0.1
+          }
+        },
+        {
+          "text": "Written explanations and plain language",
+          "dimension_updates": {
+            "simple": 0.2,
+            "narrative": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "question": "When faced with a problem, I prefer to:",
+      "options": [
+        {
+          "text": "Break it down into smaller, sequential steps",
+          "dimension_updates": {
+            "step_by_step": 0.2,
+            "systems": 0.1
+          }
+        },
+        {
+          "text": "Look for patterns and how things connect",
+          "dimension_updates": {
+            "systems": 0.2,
+            "analogy": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "question": "Which type of language appeals to you?",
+      "options": [
+        {
+          "text": "Simple, everyday language",
+          "dimension_updates": {
+            "simple": 0.2,
+            "visual": 0.1
+          }
+        },
+        {
+          "text": "Technical, precise terminology",
+          "dimension_updates": {
+            "academic": 0.2,
+            "systems": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "question": "What helps you understand concepts best?",
+      "options": [
+        {
+          "text": "Analogies and comparisons to familiar things",
+          "dimension_updates": {
+            "analogy": 0.2,
+            "narrative": 0.1
+          }
+        },
+        {
+          "text": "Facts, data, and how systems work",
+          "dimension_updates": {
+            "academic": 0.2,
+            "systems": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "question": "How do you learn sports or physical activities?",
+      "options": [
+        {
+          "text": "Someone shows me and I copy the steps",
+          "dimension_updates": {
+            "step_by_step": 0.2,
+            "visual": 0.1
+          }
+        },
+        {
+          "text": "I practice and learn by doing through repetition",
+          "dimension_updates": {
+            "systems": 0.1,
+            "simple": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "question": "What motivates you to learn?",
+      "options": [
+        {
+          "text": "Understanding the 'why' and deeper meaning",
+          "dimension_updates": {
+            "narrative": 0.2,
+            "analogy": 0.1
+          }
+        },
+        {
+          "text": "Practical application and real-world uses",
+          "dimension_updates": {
+            "simple": 0.2,
+            "systems": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "question": "Which learning environment suits you?",
+      "options": [
+        {
+          "text": "Creative, story-based exploration",
+          "dimension_updates": {
+            "narrative": 0.2,
+            "visual": 0.1
+          }
+        },
+        {
+          "text": "Logical, structured, and organized",
+          "dimension_updates": {
+            "systems": 0.2,
+            "academic": 0.1
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "question": "How do you prefer to see examples?",
+      "options": [
+        {
+          "text": "Short, simple, relatable examples",
+          "dimension_updates": {
+            "simple": 0.2,
+            "narrative": 0.1
+          }
+        },
+        {
+          "text": "Detailed, technical, in-depth examples",
+          "dimension_updates": {
+            "academic": 0.2,
+            "systems": 0.1
+          }
+        }
+      ]
+    }
+  ]
+}

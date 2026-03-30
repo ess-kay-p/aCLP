@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api", tags=["explain"])
 async def get_concepts() -> Dict[str, List[str]]:
     """Get list of available concepts."""
     return {
-        "concepts": ["acceleration", "energy", "probability"]
+        "concepts": ["Photosynthesis", "Newton's Laws", "Compound Interest"]
     }
 
 

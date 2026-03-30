@@ -8,9 +8,9 @@ class Explanation(BaseModel):
 
     id: int
     concept: str
-    style: str  # "sports", "step_by_step", "narrative", "technical", "visual"
+    style: str
     text: str
-    vector: List[float]  # 12 dimensions matching StudentProfile
+    vector: List[float]  # 8 dimensions: [sports, systems, visual, narrative, analogy, step_by_step, academic, simple]
 
 
 class ExplanationVariants(BaseModel):

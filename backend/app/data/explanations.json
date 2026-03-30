@@ -2,108 +2,66 @@
   "explanations": [
     {
       "id": 0,
-      "concept": "acceleration",
-      "style": "sports",
-      "text": "Think of acceleration like a sprinter at the starting line. When the gun goes off, they don't instantly reach top speed—they speed up over time. Acceleration is exactly that: how quickly something changes its speed. In sports, a fast acceleration means you go from slow to fast very quickly, just like a soccer player bursting away from a defender.",
-      "vector": [1.0, 0.0, 0.0, 0.0, 0.0, 0.9, 0.0, 0.0, 0.0, 0.7, 0.15, 0.0]
+      "concept": "Photosynthesis",
+      "style": "simple",
+      "text": "Photosynthesis is how plants make their own food. When sunlight hits a plant's leaves, the plant uses that light energy to turn water and a gas called carbon dioxide into sugar (food) and oxygen. The plant keeps the sugar for energy, and releases the oxygen—which is what we breathe! It's like the plant is a tiny food factory powered by the sun.",
+      "vector": [0.3, 0.4, 0.6, 0.4, 0.4, 0.5, 0.2, 0.8]
     },
     {
       "id": 1,
-      "concept": "acceleration",
-      "style": "step_by_step",
-      "text": "Here's how to understand acceleration:\n1. Acceleration is the rate at which velocity changes\n2. Velocity is speed in a specific direction\n3. If you're going 0 mph and reach 60 mph in 10 seconds, you've accelerated\n4. The calculation: acceleration = (final velocity - initial velocity) / time\n5. In this example: (60 - 0) / 10 = 6 mph per second\n6. A larger acceleration means faster speed change",
-      "vector": [0.0, 0.3, 0.0, 0.7, 0.0, 0.0, 1.0, 0.0, 0.4, 0.0, 0.8, 0.0]
+      "concept": "Photosynthesis",
+      "style": "analogy",
+      "text": "Think of a plant leaf like a solar panel on a house. Just as a solar panel captures sunlight and converts it into electricity, a leaf captures sunlight and converts it into chemical energy (sugar). The more direct sunlight the leaf gets, the more 'power' it generates. And just as a solar panel needs proper conditions to work efficiently, a plant needs water, sunlight, and the right temperature to photosynthesize effectively.",
+      "vector": [0.4, 0.5, 0.5, 0.5, 0.8, 0.4, 0.3, 0.7]
     },
     {
       "id": 2,
-      "concept": "acceleration",
-      "style": "narrative",
-      "text": "Imagine you're in a car at a red light. Your foot is on the brake, and you're completely still. The light turns green. You press the accelerator gently at first—the car starts moving and slowly picks up speed. That gradual change from standing still to moving at 30 mph is acceleration. Now imagine you press the pedal harder—the car speeds up much faster. That's greater acceleration. The entire process of changing from one speed to another is what we call acceleration.",
-      "vector": [0.0, 0.0, 0.0, 0.2, 0.95, 0.7, 0.1, 0.6, 0.0, 0.7, 0.2, 0.0]
+      "concept": "Photosynthesis",
+      "style": "academic",
+      "text": "Photosynthesis is a biochemical process occurring in chloroplasts where light energy is converted into chemical energy stored in glucose. The light-dependent reactions occur in the thylakoid membrane, involving photolysis of water, generation of ATP and NADPH, and oxidation of photosystem II. The light-independent reactions (Calvin cycle) in the stroma fix CO₂ into organic compounds. The overall equation: 6CO₂ + 6H₂O + light energy → C₆H₁₂O₆ + 6O₂. Photosynthesis is essential for global carbon cycling and oxygen production.",
+      "vector": [0.3, 0.7, 0.3, 0.4, 0.3, 0.3, 0.9, 0.2]
     },
     {
       "id": 3,
-      "concept": "acceleration",
-      "style": "technical",
-      "text": "Acceleration is defined as the rate of change of velocity with respect to time. Mathematically: a = dv/dt. In classical mechanics, Newton's second law states that F = ma, where F is force, m is mass, and a is acceleration. For constant acceleration, the kinematic equations apply: v = v₀ + at, and x = v₀t + ½at². The SI unit is meters per second squared (m/s²). Acceleration is a vector quantity, meaning it has both magnitude and direction.",
-      "vector": [0.0, 0.95, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.1, 1.0]
+      "concept": "Newton's Laws",
+      "style": "sports",
+      "text": "Newton's Laws of Motion are the foundation of how sports work. First Law: A ball won't move unless you kick it (objects stay at rest unless a force acts on them). In soccer, this is why the ball sits still until a player strikes it. Second Law: The harder you kick, the faster it goes. A golf club swinging faster creates more force, launching the ball farther. The ball's acceleration depends on how hard you hit it (force) and its weight (mass). Third Law: Every action has an equal and opposite reaction. When you throw a basketball, your hand pushes forward on the ball, and the ball pushes back on your hand with equal force.",
+      "vector": [0.8, 0.5, 0.4, 0.4, 0.6, 0.4, 0.3, 0.6]
     },
     {
       "id": 4,
-      "concept": "acceleration",
-      "style": "visual",
-      "text": "Picture a timeline with a car's speed marked at different moments. At time 0, the car is still (0 mph). At 2 seconds, it's going 10 mph. At 4 seconds, it's going 20 mph. Notice the pattern: every 2 seconds, the speed increases by 10 mph. This consistent increase is acceleration. If you draw a graph with time on the x-axis and speed on the y-axis, acceleration appears as a straight line going upward. The steeper the line, the greater the acceleration.",
-      "vector": [0.0, 0.2, 0.0, 0.3, 0.1, 0.1, 0.2, 0.9, 0.1, 0.6, 0.3, 0.0]
+      "concept": "Newton's Laws",
+      "style": "step_by_step",
+      "text": "Here's how to understand Newton's Laws:\n\n1. FIRST LAW - Inertia: Objects at rest stay at rest; objects in motion stay in motion unless acted upon by a force.\n   Example: A car moving at constant speed continues until you press the brake.\n\n2. SECOND LAW - F=ma: The acceleration of an object equals the force applied divided by its mass.\n   Example: Pushing a shopping cart (small mass) harder produces more acceleration than pushing a car (large mass).\n\n3. THIRD LAW - Action-Reaction: For every action, there is an equal and opposite reaction.\n   Example: When you jump, you push down on the ground; the ground pushes up on you with equal force, launching you into the air.\n\nThese three laws explain all motion in the universe.",
+      "vector": [0.3, 0.6, 0.4, 0.3, 0.4, 0.8, 0.5, 0.7]
     },
     {
       "id": 5,
-      "concept": "energy",
-      "style": "sports",
-      "text": "Energy in sports is like the power a player brings to the game. A boxer uses kinetic energy when punching—the faster the punch, the more energy released. A ball at the top of a hill has potential energy; when it rolls down, that potential converts to kinetic energy (motion). A tennis serve combines both: the player winds up (storing potential energy in muscle tension), then releases (converting to kinetic energy in the ball). The better athletes are at managing and converting their energy, the better they perform.",
-      "vector": [0.9, 0.0, 0.0, 0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.7, 0.2, 0.0]
+      "concept": "Newton's Laws",
+      "style": "narrative",
+      "text": "Imagine you're sitting on a smooth ice rink wearing roller skates. You're at rest, and nothing is pushing you. According to Newton's First Law, you'll just sit there forever (no force = no motion). Now a friend pushes you gently. You accelerate slightly. If they push harder, you accelerate more quickly—that's Newton's Second Law in action (more force = more acceleration). Finally, as you roll toward a wall, you push against it with your hands to stop yourself. Newton's Third Law says the wall pushes back on your hands with the same force. Without these laws, motion would be unpredictable and chaos would reign. These simple rules govern everything from falling apples to orbiting planets.",
+      "vector": [0.4, 0.5, 0.5, 0.8, 0.6, 0.5, 0.4, 0.6]
     },
     {
       "id": 6,
-      "concept": "energy",
-      "style": "step_by_step",
-      "text": "Understanding energy:\n1. Energy is the capacity to do work or cause change\n2. There are two main types: potential and kinetic\n3. Potential energy (PE) = mgh (mass × gravity × height)\n4. Kinetic energy (KE) = ½mv² (mass × velocity²)\n5. Energy can transform: PE at the top becomes KE at the bottom\n6. Total mechanical energy = PE + KE (stays constant if no friction)\n7. Energy is measured in joules (J)\n8. The higher or faster something is, the more energy it has",
-      "vector": [0.0, 0.4, 0.0, 0.6, 0.0, 0.0, 0.95, 0.0, 0.6, 0.0, 0.8, 0.1]
+      "concept": "Compound Interest",
+      "style": "simple",
+      "text": "Compound interest is like money that makes money. When you put money in a savings account, the bank pays you interest. But here's the magic: next month, you earn interest not just on your original money, but also on the interest you earned last month! It's like a snowball rolling down a hill—it keeps getting bigger because it picks up more snow as it rolls. The longer you let your money sit, the bigger your snowball becomes. That's why starting to save early is so powerful, even if you save small amounts.",
+      "vector": [0.3, 0.4, 0.6, 0.5, 0.5, 0.5, 0.3, 0.8]
     },
     {
       "id": 7,
-      "concept": "energy",
-      "style": "narrative",
-      "text": "Imagine a ball at the top of a tall building. Just sitting there, it has potential energy—the potential to cause damage if dropped. But it's not moving yet. Now someone drops it. As it falls, that potential energy transforms into kinetic energy (the energy of motion). The faster it falls, the more kinetic energy it has. When it hits the ground, it releases all that energy at once—creating a loud bang and maybe leaving a crater. This story of potential becoming kinetic is the story of energy transformation in our world.",
-      "vector": [0.0, 0.1, 0.0, 0.2, 0.92, 0.7, 0.1, 0.7, 0.0, 0.7, 0.2, 0.0]
+      "concept": "Compound Interest",
+      "style": "analogy",
+      "text": "Compound interest works like a growing garden. You plant seeds (principal). The seeds grow and produce fruit (interest). The next season, you not only get new fruit from your original seeds, but the fruit you saved from last year also produces more fruit (interest on interest). Each year, your garden produces exponentially more because you're harvesting from a larger base. A small initial investment in seeds can become an enormous, thriving garden over time. This is exponential growth—each stage multiplies the previous stage, creating acceleration in growth that seems almost magical.",
+      "vector": [0.4, 0.6, 0.5, 0.6, 0.8, 0.4, 0.3, 0.7]
     },
     {
       "id": 8,
-      "concept": "energy",
-      "style": "technical",
-      "text": "Energy (E) is a scalar quantity representing capacity to perform work. The law of conservation of energy states that energy cannot be created or destroyed, only transformed. Potential energy (PE) in a gravitational field: PE = mgh. Kinetic energy (KE): KE = ½mv². Work-energy theorem: W = ΔKE. Power (P) is the rate of energy transfer: P = dE/dt, measured in watts (W). Energy dissipation occurs through friction, heat, and other mechanisms. Total mechanical energy remains constant in isolated, frictionless systems.",
-      "vector": [0.0, 0.95, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.95, 0.0, 0.1, 0.95]
-    },
-    {
-      "id": 9,
-      "concept": "energy",
-      "style": "visual",
-      "text": "Imagine two diagrams side by side. On the left, a ball held high above the ground—this height represents potential energy, shown as a tall bar. On the right, the same ball falling fast—the speed is represented as another tall bar (kinetic energy). Now imagine the ball at medium height moving at medium speed—both bars are at medium height. As the ball falls, the left bar shrinks (less potential) while the right bar grows (more kinetic). If you add both bar heights together, they always equal the same total, showing energy conservation.",
-      "vector": [0.0, 0.2, 0.0, 0.3, 0.1, 0.1, 0.1, 0.95, 0.1, 0.6, 0.3, 0.0]
-    },
-    {
-      "id": 10,
-      "concept": "probability",
-      "style": "sports",
-      "text": "Probability in sports is about odds and chances. If a basketball player makes 80% of their free throws, their probability of success on the next shot is 0.8 (or 80%). In a tournament with 16 teams, any single team has a probability of 1/16 (about 6.25%) of winning (assuming equal skill). Betting odds reflect probability: if a team is 'favored 3 to 1,' they have a higher probability of winning. Great athletes understand probability—they know their shooting percentages, clutch performance rates, and game matchups to assess their chances.",
-      "vector": [0.85, 0.0, 0.0, 0.0, 0.0, 0.8, 0.0, 0.0, 0.0, 0.8, 0.15, 0.0]
-    },
-    {
-      "id": 11,
-      "concept": "probability",
-      "style": "step_by_step",
-      "text": "Learning probability:\n1. Probability is the likelihood of an event occurring\n2. Probability = (favorable outcomes) / (total possible outcomes)\n3. Range: 0 (impossible) to 1 (certain)\n4. Example: Rolling a 6 on a die = 1 out of 6 = 1/6 ≈ 0.167\n5. Independent events: flipping a coin twice\n6. Dependent events: drawing cards without replacement\n7. AND rule: P(A AND B) = P(A) × P(B) [for independent events]\n8. OR rule: P(A OR B) = P(A) + P(B) - P(A AND B)\n9. Always remember: probabilities of all outcomes sum to 1",
-      "vector": [0.0, 0.3, 0.0, 0.7, 0.0, 0.0, 0.95, 0.0, 0.5, 0.0, 0.85, 0.05]
-    },
-    {
-      "id": 12,
-      "concept": "probability",
-      "style": "narrative",
-      "text": "Let's say you're at a lottery drawing with 1,000 tickets and you hold one ticket. The probability that YOU win is 1 out of 1,000, or 0.001 (0.1%). Now imagine a simpler scenario: you flip a fair coin. It has two equally likely outcomes—heads or tails—so each has a probability of 0.5 (50%). If you flip it twice and want both to be heads, the probability is 0.5 × 0.5 = 0.25 (25%). These stories show how probability ranges from very unlikely (lottery) to more likely (coin flip) to certain.",
-      "vector": [0.0, 0.1, 0.0, 0.25, 0.9, 0.7, 0.2, 0.7, 0.0, 0.75, 0.2, 0.0]
-    },
-    {
-      "id": 13,
-      "concept": "probability",
-      "style": "technical",
-      "text": "Probability is a measure of likelihood in a sample space Ω. For event A ⊆ Ω, P(A) ∈ [0,1]. The axioms: P(Ω) = 1, P(∅) = 0, and for mutually exclusive events, P(A ∪ B) = P(A) + P(B). For independent events, P(A ∩ B) = P(A) · P(B). Conditional probability: P(A|B) = P(A ∩ B) / P(B). Bayes' theorem: P(A|B) = P(B|A) · P(A) / P(B). Probability distributions (binomial, normal, Poisson) model real-world phenomena.",
-      "vector": [0.0, 0.95, 0.0, 0.6, 0.0, 0.0, 0.0, 0.0, 0.95, 0.0, 0.1, 0.95]
-    },
-    {
-      "id": 14,
-      "concept": "probability",
-      "style": "visual",
-      "text": "Imagine a spinner divided into sections. If 3 out of 5 sections are red, the probability of landing on red is 3/5 (60%). Visually, red occupies more space on the spinner. Now picture a bar chart showing 100 coin flips: roughly 50 bars for heads, 50 for tails. The probability of heads is about 50%. For a normal distribution curve, the peak represents the most likely value, and the areas under the curve represent probabilities. Wider sections = higher probability; narrower sections = lower probability.",
-      "vector": [0.0, 0.2, 0.0, 0.3, 0.1, 0.1, 0.15, 0.92, 0.1, 0.7, 0.25, 0.0]
+      "concept": "Compound Interest",
+      "style": "academic",
+      "text": "Compound interest is calculated using the formula A = P(1 + r/n)^(nt), where A is the final amount, P is principal, r is annual interest rate, n is compounding frequency, and t is time in years. The compounding effect creates exponential growth rather than linear growth. Continuous compounding uses the formula A = Pe^(rt). The time value of money principle demonstrates that money available today is worth more than the same amount in the future due to earning potential. This fundamental concept in finance underlies investment strategies, loan calculations, and retirement planning. The frequency of compounding (daily, monthly, quarterly, annually) significantly impacts the total return.",
+      "vector": [0.3, 0.7, 0.3, 0.3, 0.3, 0.3, 0.9, 0.2]
     }
   ]
 }

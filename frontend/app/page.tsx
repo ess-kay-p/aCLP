@@ -31,7 +31,7 @@ export default function Home() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               session_id: sessionId,
-              concept: "acceleration",
+              concept: "Photosynthesis",
             }),
           }
         );
@@ -97,9 +97,9 @@ export default function Home() {
                   className="card text-left hover:shadow-lg transition-all border-2 border-transparent hover:border-blue-500"
                 >
                   <div className="text-4xl mb-3">
-                    {concept === "acceleration" && "⚡"}
-                    {concept === "energy" && "💡"}
-                    {concept === "probability" && "🎲"}
+                    {concept === "Photosynthesis" && "🌱"}
+                    {concept === "Newton's Laws" && "⚙️"}
+                    {concept === "Compound Interest" && "📈"}
                   </div>
                   <h3 className="text-xl font-bold text-gray-800 capitalize">
                     {concept}
@@ -132,10 +132,10 @@ export default function Home() {
               Welcome to Lexicon! 👋
             </h2>
             <p className="text-gray-600 text-lg mb-4">
-              Let's find the explanation style that works best for you.
+              Let's personalize your learning experience.
             </p>
             <p className="text-gray-500 text-sm">
-              We'll ask you one question about how you prefer to learn, then
+              Answer 10 quick questions about your learning preferences, and we'll
               personalize all explanations just for you.
             </p>
           </div>
