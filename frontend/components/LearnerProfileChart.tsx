@@ -7,7 +7,6 @@ import {
   PolarAngleAxis,
   PolarRadiusAxis,
   ResponsiveContainer,
-  Legend,
 } from "recharts";
 
 interface LearnerProfileChartProps {
@@ -37,38 +36,82 @@ export default function LearnerProfileChart({
     fullMark: 1.0,
   }));
 
+  // Create dimension details with percentages
+  const dimensionDetails = dimensions.map((name, index) => ({
+    name,
+    value: vector[index] || 0,
+    percentage: Math.round((vector[index] || 0) * 100),
+  }));
+
   return (
-    <div className="w-full h-96 flex flex-col items-center">
-      <h3 className="text-lg font-bold text-gray-800 mb-4">
-        Your Learning Profile
-      </h3>
-      <ResponsiveContainer width="100%" height={300}>
-        <RadarChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-          <PolarGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-          <PolarAngleAxis
-            dataKey="name"
-            tick={{ fill: "#666", fontSize: 12 }}
-            angle={90}
-            orientation="outer"
-          />
-          <PolarRadiusAxis
-            angle={90}
-            domain={[0, 1]}
-            ticks={[0, 0.25, 0.5, 0.75, 1]}
-            tick={{ fill: "#999", fontSize: 10 }}
-          />
-          <Radar
-            name="Profile"
-            dataKey="score"
-            stroke="#3b82f6"
-            fill="#3b82f6"
-            fillOpacity={0.5}
-          />
-        </RadarChart>
-      </ResponsiveContainer>
-      <p className="text-sm text-gray-500 mt-4">
-        Your preferences across 8 learning dimensions (0.0 = low, 1.0 = high)
-      </p>
+    <div className="w-full space-y-6">
+      <div>
+        <h3 className="text-lg font-bold text-gray-800 mb-4">
+          Your Learning Profile
+        </h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Your preferences across 8 learning dimensions (0% = low, 100% = high)
+        </p>
+
+        {/* Radar Chart */}
+        <div className="w-full h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <RadarChart
+              data={data}
+              margin={{ top: 40, right: 40, bottom: 40, left: 40 }}
+            >
+              <PolarGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+              <PolarAngleAxis
+                dataKey="name"
+                tick={{ fill: "#666", fontSize: 11 }}
+                angle={0}
+                orientation="outer"
+              />
+              <PolarRadiusAxis
+                angle={0}
+                domain={[0, 1]}
+                ticks={[0, 0.25, 0.5, 0.75, 1]}
+                tick={{ fill: "#999", fontSize: 9 }}
+              />
+              <Radar
+                name="Profile"
+                dataKey="score"
+                stroke="#3b82f6"
+                fill="#3b82f6"
+                fillOpacity={0.5}
+              />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Dimension Details List */}
+      <div className="grid grid-cols-2 gap-4">
+        {dimensionDetails.map((dim) => (
+          <div
+            key={dim.name}
+            className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200"
+          >
+            <div className="flex justify-between items-start mb-2">
+              <span className="font-semibold text-gray-800 text-sm">
+                {dim.name}
+              </span>
+              <span className="text-lg font-bold text-blue-600">
+                {dim.percentage}%
+              </span>
+            </div>
+            <div className="w-full bg-blue-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all"
+                style={{ width: `${dim.percentage}%` }}
+              />
+            </div>
+            <span className="text-xs text-gray-600 mt-1 block">
+              {dim.value.toFixed(2)} / 1.00
+            </span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
