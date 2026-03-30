@@ -26,17 +26,17 @@ export default function ExplanationCard({
       <div className="flex items-center gap-2 mb-4">
         <span className="text-3xl">{styleEmojis[style] || "💡"}</span>
         <div>
-          <h2 className="text-2xl font-bold text-gray-800 capitalize">
+          <h2 className="text-2xl font-bold text-slate-800 capitalize">
             {concept}
           </h2>
-          <p className="text-gray-600 capitalize">
+          <p className="text-slate-600 capitalize">
             {style === "step_by_step" ? "Step-by-Step" : style} Explanation
           </p>
         </div>
       </div>
 
-      <div className="bg-gray-50 p-6 rounded-lg border-l-4 border-blue-500 max-h-96 overflow-y-auto">
-        <p className="text-gray-800 whitespace-pre-wrap leading-relaxed text-base">
+      <div className="bg-slate-50 p-6 rounded-lg border-l-4 border-indigo-500 max-h-96 overflow-y-auto">
+        <p className="text-slate-800 whitespace-pre-wrap leading-relaxed text-base">
           {text}
         </p>
       </div>

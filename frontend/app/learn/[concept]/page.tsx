@@ -9,6 +9,7 @@ import {
   submitFeedback,
   ExplanationResponse,
 } from "@/lib/api";
+import { isAuthenticated, clearToken } from "@/lib/auth";
 
 type PageState = "loading" | "explanation" | "rating" | "submitted" | "error";
 
@@ -23,6 +24,11 @@ export default function LearnPage() {
   const [explanation, setExplanation] = useState<ExplanationResponse | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const loadExplanation = async () => {
@@ -74,16 +80,32 @@ export default function LearnPage() {
     }, 1500);
   };
 
+  const handleLogout = () => {
+    clearToken();
+    localStorage.removeItem("lexicon_session_id");
+    router.push("/login");
+  };
+
   return (
     <div className="container">
-      <header className="text-center mb-8 pt-8">
-        <button
-          onClick={() => router.push("/")}
-          className="text-blue-500 hover:text-blue-700 font-medium mb-4 inline-block"
-        >
-          ← Back to concepts
-        </button>
-        <h1 className="text-4xl font-bold text-gray-900 capitalize">
+      <header className="mb-8 pt-8">
+        <div className="flex justify-between items-start mb-4">
+          <button
+            onClick={() => router.push("/")}
+            className="text-blue-500 hover:text-blue-700 font-medium"
+          >
+            ← Back to concepts
+          </button>
+          {isMounted && isAuthenticated() && (
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded hover:bg-gray-100 transition-colors"
+            >
+              Sign Out
+            </button>
+          )}
+        </div>
+        <h1 className="text-center text-4xl font-bold text-gray-900 capitalize">
           Learn {concept}
         </h1>
       </header>

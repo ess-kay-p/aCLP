@@ -45,10 +45,10 @@ export default function LearnerProfileChart({
 
   return (
     <div className="w-full">
-      <h3 className="text-lg font-bold text-gray-800 mb-2">
+      <h3 className="text-lg font-bold text-slate-800 mb-2">
         Your Learning Profile
       </h3>
-      <p className="text-sm text-gray-600 mb-6">
+      <p className="text-sm text-slate-600 mb-6">
         Your preferences across 8 learning dimensions (0% = low, 100% = high)
       </p>
 
@@ -89,23 +89,23 @@ export default function LearnerProfileChart({
           {dimensionDetails.map((dim) => (
             <div
               key={dim.name}
-              className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200"
+              className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-indigo-200"
             >
               <div className="flex justify-between items-start mb-2">
-                <span className="font-semibold text-gray-800 text-sm">
+                <span className="font-semibold text-slate-800 text-sm">
                   {dim.name}
                 </span>
-                <span className="text-lg font-bold text-blue-600">
+                <span className="text-lg font-bold text-indigo-600">
                   {dim.percentage}%
                 </span>
               </div>
-              <div className="w-full bg-blue-200 rounded-full h-2">
+              <div className="w-full bg-indigo-200 rounded-full h-2">
                 <div
-                  className="bg-blue-600 h-2 rounded-full transition-all"
+                  className="bg-indigo-600 h-2 rounded-full transition-all"
                   style={{ width: `${dim.percentage}%` }}
                 />
               </div>
-              <span className="text-xs text-gray-600 mt-1 block">
+              <span className="text-xs text-slate-600 mt-1 block">
                 {dim.value.toFixed(2)} / 1.00
               </span>
             </div>

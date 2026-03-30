@@ -21,7 +21,7 @@ export default function TopicInput({ onSubmit, isLoading }: TopicInputProps) {
     <form onSubmit={handleSubmit} className="w-full">
       <div className="space-y-4">
         <div>
-          <label htmlFor="topic" className="block text-lg font-medium text-gray-700 mb-2">
+          <label htmlFor="topic" className="block text-lg font-medium text-slate-700 mb-2">
             What would you like to learn?
           </label>
           <textarea
@@ -29,7 +29,7 @@ export default function TopicInput({ onSubmit, isLoading }: TopicInputProps) {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="E.g., 'Why does a car accelerate when I press the gas pedal?' or 'What is energy?'"
-            className="w-full p-4 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:outline-none resize-none"
+            className="w-full p-4 border-2 border-slate-300 rounded-lg focus:border-indigo-500 focus:outline-none resize-none"
             rows={3}
             disabled={isLoading}
           />

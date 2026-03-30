@@ -1,13 +1,39 @@
 """Routes for getting explanations."""
-from fastapi import APIRouter, HTTPException
-from typing import Dict, List
+from fastapi import APIRouter, HTTPException, Depends, Header
+from typing import Dict, List, Optional
+from sqlalchemy.orm import Session
 
 from ..models import Explanation
 from .onboarding import get_student_vector
 from ..services.matching import find_best_explanation
 from ..data.loader import load_explanations
+from ..database import get_db
+from ..models.db_models import UserVector, User
+from ..routers.auth import get_current_user_from_header
+from ..services.auth_service import decode_token
 
 router = APIRouter(prefix="/api", tags=["explain"])
+
+
+async def get_optional_user(
+    authorization: Optional[str] = Header(None),
+    db: Session = Depends(get_db),
+) -> Optional[User]:
+    """Get user if authenticated, otherwise return None."""
+    if not authorization:
+        return None
+
+    if not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization[7:]
+    token_data = decode_token(token)
+
+    if not token_data:
+        return None
+
+    user = db.query(User).filter(User.id == token_data.user_id).first()
+    return user
 
 
 @router.get("/concepts")
@@ -19,24 +45,41 @@ async def get_concepts() -> Dict[str, List[str]]:
 
 
 @router.post("/explain")
-async def get_explanation(request: Dict) -> Dict:
+async def get_explanation(
+    request: Dict,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+) -> Dict:
     """
     Get best-matched explanation for a student and concept.
 
+    For authenticated users, uses JWT token. For session-based users, uses session_id.
+
     Expected request body:
     {
-        "session_id": "abc123",
+        "session_id": "abc123",  # Optional if authenticated
         "concept": "acceleration"
     }
     """
-    session_id = request.get("session_id")
+    student_vector = None
     concept = request.get("concept")
 
-    if not session_id or not concept:
-        raise HTTPException(status_code=400, detail="Missing session_id or concept")
+    if not concept:
+        raise HTTPException(status_code=400, detail="Missing concept")
 
-    # Get student vector
-    student_vector = get_student_vector(session_id)
+    # Try to get authenticated user vector first
+    if current_user:
+        user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+        if user_vector:
+            student_vector = user_vector.vector
+
+    # Fall back to session-based vector
+    if not student_vector:
+        session_id = request.get("session_id")
+        if not session_id:
+            raise HTTPException(status_code=400, detail="Missing session_id or authentication")
+        student_vector = get_student_vector(session_id)
+
     if student_vector is None:
         raise HTTPException(status_code=404, detail="Student profile not found. Complete onboarding first.")
 

@@ -18,7 +18,7 @@ export default function RatingWidget({ onSubmit, isLoading }: RatingWidgetProps)
 
   return (
     <div className="card text-center space-y-4">
-      <h3 className="text-xl font-bold text-gray-800">
+      <h3 className="text-xl font-bold text-slate-800">
         How well did this explanation work for you?
       </h3>
 
@@ -36,7 +36,7 @@ export default function RatingWidget({ onSubmit, isLoading }: RatingWidgetProps)
               className={
                 rating <= (hoveredRating || selectedRating)
                   ? "text-yellow-400"
-                  : "text-gray-300"
+                  : "text-slate-300"
               }
             >
               ★
@@ -45,7 +45,7 @@ export default function RatingWidget({ onSubmit, isLoading }: RatingWidgetProps)
         ))}
       </div>
 
-      <div className="text-sm text-gray-600 min-h-6">
+      <div className="text-sm text-slate-600 min-h-6">
         {selectedRating > 0 && !isLoading && (
           <p className="font-medium">
             Submitted: {selectedRating} star{selectedRating !== 1 ? "s" : ""}

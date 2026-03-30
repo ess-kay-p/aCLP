@@ -1,13 +1,14 @@
 """Student profile model."""
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 
 class StudentProfile(BaseModel):
     """Student profile with 8-dimensional vector."""
 
-    session_id: str
     vector: List[float]  # 8 dimensions: [sports, systems, visual, narrative, analogy, step_by_step, academic, simple]
+    session_id: Optional[str] = None  # For session-based users
+    user_id: Optional[int] = None  # For authenticated users
 
     class Config:
         json_schema_extra = {
