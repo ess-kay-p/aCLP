@@ -44,17 +44,18 @@ export default function LearnerProfileChart({
   }));
 
   return (
-    <div className="w-full space-y-6">
-      <div>
-        <h3 className="text-lg font-bold text-gray-800 mb-4">
-          Your Learning Profile
-        </h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Your preferences across 8 learning dimensions (0% = low, 100% = high)
-        </p>
+    <div className="w-full">
+      <h3 className="text-lg font-bold text-gray-800 mb-2">
+        Your Learning Profile
+      </h3>
+      <p className="text-sm text-gray-600 mb-6">
+        Your preferences across 8 learning dimensions (0% = low, 100% = high)
+      </p>
 
-        {/* Radar Chart */}
-        <div className="w-full h-80">
+      {/* Chart and Vectors in Single Row */}
+      <div className="flex gap-8 items-start">
+        {/* Radar Chart - Left Side */}
+        <div className="flex-shrink-0 w-80 h-80">
           <ResponsiveContainer width="100%" height="100%">
             <RadarChart
               data={data}
@@ -83,34 +84,34 @@ export default function LearnerProfileChart({
             </RadarChart>
           </ResponsiveContainer>
         </div>
-      </div>
 
-      {/* Dimension Details List */}
-      <div className="grid grid-cols-2 gap-4">
-        {dimensionDetails.map((dim) => (
-          <div
-            key={dim.name}
-            className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200"
-          >
-            <div className="flex justify-between items-start mb-2">
-              <span className="font-semibold text-gray-800 text-sm">
-                {dim.name}
-              </span>
-              <span className="text-lg font-bold text-blue-600">
-                {dim.percentage}%
+        {/* Dimension Details List - Right Side */}
+        <div className="flex-1 grid grid-cols-2 gap-3">
+          {dimensionDetails.map((dim) => (
+            <div
+              key={dim.name}
+              className="p-3 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200"
+            >
+              <div className="flex justify-between items-start mb-2">
+                <span className="font-semibold text-gray-800 text-sm">
+                  {dim.name}
+                </span>
+                <span className="text-lg font-bold text-blue-600">
+                  {dim.percentage}%
+                </span>
+              </div>
+              <div className="w-full bg-blue-200 rounded-full h-2">
+                <div
+                  className="bg-blue-600 h-2 rounded-full transition-all"
+                  style={{ width: `${dim.percentage}%` }}
+                />
+              </div>
+              <span className="text-xs text-gray-600 mt-1 block">
+                {dim.value.toFixed(2)} / 1.00
               </span>
             </div>
-            <div className="w-full bg-blue-200 rounded-full h-2">
-              <div
-                className="bg-blue-600 h-2 rounded-full transition-all"
-                style={{ width: `${dim.percentage}%` }}
-              />
-            </div>
-            <span className="text-xs text-gray-600 mt-1 block">
-              {dim.value.toFixed(2)} / 1.00
-            </span>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
