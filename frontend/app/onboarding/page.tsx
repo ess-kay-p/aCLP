@@ -109,10 +109,10 @@ export default function OnboardingPage() {
       if (questionsResult.data && questionsResult.data.questions.length > 0) {
         setCategoryQuestions(questionsResult.data.questions);
         setStep("category-questions");
+        setIsLoading(false);
       } else {
-        setStep("topic-input");
+        await handleCompleteOnboarding();
       }
-      setIsLoading(false);
     } catch (err) {
       setError("Failed to load category questions");
       setIsLoading(false);
