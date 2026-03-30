@@ -26,6 +26,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Reinclude frontend/lib (Next.js lib directory)
+!frontend/lib/
+!frontend/lib/**
+
 # IDE
 .idea/
 .vscode/
