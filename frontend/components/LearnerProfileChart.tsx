@@ -64,7 +64,7 @@ export default function LearnerProfileChart({
               <PolarGrid strokeDasharray="3 3" stroke="#e5e7eb" />
               <PolarAngleAxis
                 dataKey="name"
-                tick={false}
+                tick={{ fill: "#666", fontSize: 11 }}
                 angle={0}
                 orientation="outer"
               />
