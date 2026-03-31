@@ -78,7 +78,7 @@ async def get_explanation(
         session_id = request.get("session_id")
         if not session_id:
             raise HTTPException(status_code=400, detail="Missing session_id or authentication")
-        student_vector = get_student_vector(session_id)
+        student_vector = get_student_vector(session_id, db)
 
     if student_vector is None:
         raise HTTPException(status_code=404, detail="Student profile not found. Complete onboarding first.")

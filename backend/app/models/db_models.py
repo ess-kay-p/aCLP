@@ -60,6 +60,21 @@ class UserVector(Base):
         return f"<UserVector(user_id={self.user_id})>"
 
 
+class SessionVector(Base):
+    """Learner profile vector for session-based (unauthenticated) users."""
+
+    __tablename__ = "session_vectors"
+    __table_args__ = (UniqueConstraint("session_id", name="uq_session_id"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String, nullable=False, unique=True, index=True)
+    vector = Column(JSON, nullable=False)  # 8D vector as list
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<SessionVector(session_id={self.session_id})>"
+
+
 class UserQuestion(Base):
     """Custom questions configured by a user."""
 

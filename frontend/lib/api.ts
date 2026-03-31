@@ -18,9 +18,22 @@ async function fetchApi<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<ApiResponse<T>> {
+  const fullUrl = `${API_BASE}${endpoint}`;
+  const method = options?.method || "GET";
+
+  console.log(`[API] ${method} ${fullUrl}`);
+  console.log(`[API] Headers:`, {
+    "Content-Type": "application/json",
+    ...getAuthHeader(),
+    ...options?.headers,
+  });
+  if (options?.body) {
+    console.log(`[API] Body:`, options.body);
+  }
+
   try {
     const authHeader = getAuthHeader();
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    const response = await fetch(fullUrl, {
       headers: {
         "Content-Type": "application/json",
         ...authHeader,
@@ -29,14 +42,28 @@ async function fetchApi<T>(
       ...options,
     });
 
+    console.log(`[API] Response Status: ${response.status} ${response.statusText}`);
+    console.log(`[API] Response Headers:`, {
+      "content-type": response.headers.get("content-type"),
+      "content-length": response.headers.get("content-length"),
+    });
+
     if (!response.ok) {
       const error = await response.text();
-      return { error: error || `API error: ${response.status}` };
+      const errorMsg = error || `API error: ${response.status}`;
+      console.error(`[API Error] ${method} ${fullUrl} - ${response.status}: ${errorMsg}`);
+      console.trace(`[API Error] Stack trace for ${method} ${fullUrl}`);
+      return { error: errorMsg };
     }
 
     const data = await response.json();
+    console.log(`[API] ✓ Success:`, data);
     return { data };
   } catch (error) {
+    console.error(`[API Exception] ${method} ${fullUrl}:`, error);
+    if (error instanceof Error) {
+      console.error("[API Exception] Stack trace:", error.stack);
+    }
     return { error: `Network error: ${error}` };
   }
 }

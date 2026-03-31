@@ -9,7 +9,7 @@ from ..models import StudentProfile
 from ..services.vector_ops import create_zero_vector, VECTOR_MAX, create_style_vector
 from ..services.llm import generate_explanation_variants
 from ..database import get_db
-from ..models.db_models import UserVector, AdminQuestion, User, Category
+from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector
 from ..services.auth_service import decode_token
 from pydantic import BaseModel
 from sqlalchemy import and_
@@ -177,13 +177,13 @@ async def get_student_profile(
 
 
 @router.get("/profile/{session_id}", response_model=StudentProfile)
-async def get_student_profile_by_session(session_id: str) -> StudentProfile:
+async def get_student_profile_by_session(session_id: str, db: Session = Depends(get_db)) -> StudentProfile:
     """
     Get the student's learner profile vector by session ID (legacy endpoint).
 
     Deprecated: use GET /profile with session_id query parameter instead.
     """
-    vector = get_student_vector(session_id)
+    vector = get_student_vector(session_id, db)
     if vector is None:
         raise HTTPException(
             status_code=404,
@@ -269,7 +269,15 @@ async def submit_answers(
         db.commit()
         return StudentProfile(user_id=current_user.id, vector=vector)
     else:
-        # Save to memory
+        # Save to database (session-based)
+        session_vector_obj = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
+        if session_vector_obj:
+            session_vector_obj.vector = vector
+        else:
+            session_vector_obj = SessionVector(session_id=session_id, vector=vector)
+            db.add(session_vector_obj)
+        db.commit()
+        # Also save to memory for backward compatibility
         student_profiles[session_id] = vector
         return StudentProfile(session_id=session_id, vector=vector)
 
@@ -394,15 +402,33 @@ async def generate_personalized_explanation(
         )
 
 
-def get_student_vector(session_id: str) -> list:
-    """Retrieve student vector from memory."""
+def get_student_vector(session_id: str, db: Session = None) -> list:
+    """Retrieve student vector from database or memory (fallback)."""
+    # Try database first
+    if db:
+        session_vector = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
+        if session_vector:
+            vector = session_vector.vector
+            if isinstance(vector, dict):
+                return list(vector.values()) if vector else None
+            return vector
+
+    # Fall back to memory (for backward compatibility)
     if session_id not in student_profiles:
         return None
     return student_profiles[session_id]
 
 
-def update_student_vector(session_id: str, new_vector: list) -> None:
-    """Update student vector in memory."""
+def update_student_vector(session_id: str, new_vector: list, db: Session = None) -> None:
+    """Update student vector in database and memory (fallback)."""
+    # Update in database
+    if db:
+        session_vector = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
+        if session_vector:
+            session_vector.vector = new_vector
+            db.commit()
+
+    # Also update memory for backward compatibility
     student_profiles[session_id] = new_vector
 
 

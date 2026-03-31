@@ -9,7 +9,7 @@ from .onboarding import get_student_vector, update_student_vector
 from ..data.loader import load_explanations
 from ..services.vector_ops import update_student_vector as update_vector
 from ..database import get_db
-from ..models.db_models import UserVector, User
+from ..models.db_models import UserVector, User, SessionVector
 from ..services.auth_service import decode_token
 
 router = APIRouter(prefix="/api", tags=["feedback"])
@@ -70,7 +70,7 @@ async def submit_feedback(
     if not student_vector:
         if not session_id:
             raise HTTPException(status_code=400, detail="Missing session_id or authentication")
-        student_vector = get_student_vector(session_id)
+        student_vector = get_student_vector(session_id, db)
 
     if student_vector is None:
         raise HTTPException(status_code=404, detail="Student profile not found")
@@ -106,6 +106,6 @@ async def submit_feedback(
             db.commit()
         return StudentProfile(user_id=current_user.id, vector=new_vector)
     else:
-        # Update in memory
-        update_student_vector(session_id, new_vector)
+        # Update in database and memory
+        update_student_vector(session_id, new_vector, db)
         return StudentProfile(session_id=session_id, vector=new_vector)
