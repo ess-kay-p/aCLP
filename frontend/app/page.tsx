@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId } from "@/lib/api";
+import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId, checkSessionProfile } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 import LearnerProfileChart from "@/components/LearnerProfileChart";
 import { Category } from "@/lib/api";
@@ -63,19 +63,9 @@ export default function Home() {
             return;
           }
 
-          const explanationResult = await fetch(
-            `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"}/api/explain`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                session_id: sessionId,
-                concept: "Photosynthesis",
-              }),
-            }
-          );
+          const explanationResult = await checkSessionProfile(sessionId);
 
-          if (explanationResult.ok) {
+          if (!explanationResult.error) {
             setHasProfile(true);
 
             try {

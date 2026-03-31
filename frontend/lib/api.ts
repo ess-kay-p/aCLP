@@ -146,6 +146,18 @@ export async function getStudentProfile(
   return fetchApi<StudentProfile>(`/api/onboarding/profile/${sessionId}`);
 }
 
+export async function checkSessionProfile(
+  sessionId: string
+): Promise<ApiResponse<{ explanation?: string }>> {
+  return fetchApi<{ explanation?: string }>("/api/explain", {
+    method: "POST",
+    body: JSON.stringify({
+      session_id: sessionId,
+      concept: "Photosynthesis",
+    }),
+  });
+}
+
 export interface StudentProfile {
   session_id: string;
   vector: number[];
