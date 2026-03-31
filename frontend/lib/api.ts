@@ -3,7 +3,11 @@
  */
 import { getToken, getAuthHeader } from "./auth";
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+// Ensure HTTPS in production
+let API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+if (typeof window !== 'undefined' && window.location.protocol === 'https:' && API_BASE.startsWith('http://')) {
+  API_BASE = API_BASE.replace('http://', 'https://');
+}
 
 interface ApiResponse<T> {
   data?: T;
