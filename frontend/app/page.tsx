@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId, checkSessionProfile } from "@/lib/api";
+import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 import LearnerProfileChart from "@/components/LearnerProfileChart";
 import { Category } from "@/lib/api";
@@ -63,20 +63,19 @@ export default function Home() {
             return;
           }
 
-          const explanationResult = await checkSessionProfile(sessionId);
-
-          if (!explanationResult.error) {
-            setHasProfile(true);
-
-            try {
-              const profileResult = await getStudentProfile(sessionId);
-              if (profileResult.data) {
-                setProfileVector(profileResult.data.vector);
-              }
-            } catch (err) {
-              console.log("Could not fetch profile vector");
+          try {
+            const profileResult = await getStudentProfile(sessionId);
+            if (profileResult.data && profileResult.data.vector) {
+              setHasProfile(true);
+              setProfileVector(profileResult.data.vector);
+            } else {
+              // Profile not found - clear stale session ID and force new onboarding
+              localStorage.removeItem("lexicon_session_id");
+              setHasProfile(false);
             }
-          } else {
+          } catch (err) {
+            // Error fetching profile - clear stale session ID
+            localStorage.removeItem("lexicon_session_id");
             setHasProfile(false);
           }
         }
