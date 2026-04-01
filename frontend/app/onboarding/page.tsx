@@ -57,7 +57,7 @@ export default function OnboardingPage() {
           setQuestions(questionsResult.data.questions);
         }
 
-        const categoriesResult = await getCategories();
+        const categoriesResult = await getCategories(true);
         if (categoriesResult.error) {
           setError(`Failed to load categories: ${categoriesResult.error}`);
           setIsLoading(false);
@@ -78,7 +78,7 @@ export default function OnboardingPage() {
     loadInitialData();
   }, []);
 
-  const handleSelectInitialOption = (optionIndex: number) => {
+  const handleSelectInitialOption = async (optionIndex: number) => {
     const currentQuestion = questions[currentQuestionIndex];
     setAnswers({
       ...answers,
@@ -87,6 +87,8 @@ export default function OnboardingPage() {
 
     if (currentQuestionIndex < questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+    } else if (categories.length === 0) {
+      await handleCompleteOnboarding();
     } else {
       setStep("category-selection");
     }

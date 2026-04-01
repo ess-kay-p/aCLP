@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
 from ..database import get_db
-from ..models.db_models import Category, User
+from ..models.db_models import Category, User, AdminQuestion
 from ..routers.auth import get_current_user_from_header
 
 router = APIRouter(prefix="/api/categories", tags=["categories"])
@@ -63,10 +63,24 @@ async def get_optional_user(
 
 
 @router.get("/", response_model=List[CategoryResponse])
-async def list_categories(db: Session = Depends(get_db)):
-    """Get all categories (public)."""
+async def list_categories(
+    has_questions: bool = False,
+    db: Session = Depends(get_db),
+):
+    """Get all categories (public). Pass has_questions=true to exclude empty categories."""
     try:
-        categories = db.query(Category).all()
+        if has_questions:
+            categories = (
+                db.query(Category)
+                .filter(
+                    db.query(AdminQuestion)
+                    .filter(AdminQuestion.category_id == Category.id)
+                    .exists()
+                )
+                .all()
+            )
+        else:
+            categories = db.query(Category).all()
         return categories
     except Exception:
         logger.exception("list categories failed")

@@ -200,9 +200,23 @@ export default function Home() {
 
             {!explanation && !isGeneratingExplanation && (
               <div className="card">
-                <h2 className="text-2xl font-bold text-slate-900 mb-2">
-                  ❓ Ask a Question
-                </h2>
+                <div className="flex items-center gap-2 mb-2">
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    ❓ Ask a Question
+                  </h2>
+                  <div className="relative group">
+                    <span className="flex items-center justify-center w-5 h-5 rounded-full bg-slate-200 text-slate-500 text-xs font-bold cursor-default select-none">
+                      i
+                    </span>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 bg-slate-800 text-white text-xs rounded-lg px-3 py-2.5 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                      <p className="font-semibold mb-1">How your style is chosen</p>
+                      <p className="text-slate-300 leading-relaxed">
+                        Your onboarding answers built a personal learning profile — a set of scores across styles like narrative, step-by-step, and analogy. Each explanation style has its own scores. Lexicon picks the style whose scores best match yours using cosine similarity.
+                      </p>
+                      <div className="absolute left-1/2 -translate-x-1/2 top-full w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-slate-800" />
+                    </div>
+                  </div>
+                </div>
                 <p className="text-slate-600 mb-6">
                   Ask about any topic and get a personalized explanation tailored to your learning style.
                 </p>

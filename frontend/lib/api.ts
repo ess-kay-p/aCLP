@@ -57,7 +57,8 @@ async function fetchApi<T>(
       return { error: errorMsg };
     }
 
-    const data = await response.json();
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
     console.log(`[API] ✓ Success:`, data);
     return { data };
   } catch (error) {
@@ -341,8 +342,9 @@ export interface Category {
   created_by?: number;
 }
 
-export async function getCategories(): Promise<ApiResponse<Category[]>> {
-  return fetchApi<Category[]>("/api/categories/");
+export async function getCategories(hasQuestions?: boolean): Promise<ApiResponse<Category[]>> {
+  const url = hasQuestions ? "/api/categories/?has_questions=true" : "/api/categories/";
+  return fetchApi<Category[]>(url);
 }
 
 export async function createCategory(
