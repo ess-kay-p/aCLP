@@ -72,6 +72,7 @@ export default function SignupPage() {
               id="email"
               type="email"
               required
+              autoComplete="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="input"
@@ -87,6 +88,7 @@ export default function SignupPage() {
               id="password"
               type="password"
               required
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="input"
@@ -103,6 +105,7 @@ export default function SignupPage() {
               id="confirm-password"
               type="password"
               required
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               className="input"

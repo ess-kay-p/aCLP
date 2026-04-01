@@ -56,12 +56,7 @@ export default function Home() {
             setHasProfile(false);
           }
         } else {
-          const sessionId = localStorage.getItem("lexicon_session_id");
-          if (!sessionId) {
-            setIsLoading(false);
-            router.push("/login");
-            return;
-          }
+          const sessionId = getSessionId();
 
           try {
             const profileResult = await getStudentProfile(sessionId);
@@ -69,14 +64,12 @@ export default function Home() {
               setHasProfile(true);
               setProfileVector(profileResult.data.vector);
             } else {
-              // Profile not found - clear stale session ID and force new onboarding
-              localStorage.removeItem("lexicon_session_id");
-              setHasProfile(false);
+              router.push("/onboarding");
+              return;
             }
           } catch (err) {
-            // Error fetching profile - clear stale session ID
-            localStorage.removeItem("lexicon_session_id");
-            setHasProfile(false);
+            router.push("/onboarding");
+            return;
           }
         }
       } catch (error) {
@@ -157,13 +150,22 @@ export default function Home() {
               <h1 className="text-4xl font-bold text-slate-900">📚 Lexicon</h1>
               <p className="text-slate-600 mt-1">Explanations tailored to your learning style</p>
             </div>
-            {isMounted && isAuthenticated() && (
-              <button
-                onClick={handleLogout}
-                className="btn-secondary"
-              >
-                Sign Out
-              </button>
+            {isMounted && (
+              isAuthenticated() ? (
+                <button
+                  onClick={handleLogout}
+                  className="btn-secondary"
+                >
+                  Sign Out
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push("/login")}
+                  className="btn-secondary"
+                >
+                  Sign In
+                </button>
+              )
             )}
           </div>
         </header>
