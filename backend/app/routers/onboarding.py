@@ -1,6 +1,9 @@
 """Onboarding routes using branching questionnaire."""
 import json
+import logging
 import uuid
+
+logger = logging.getLogger(__name__)
 from fastapi import APIRouter, HTTPException, Depends, Header, status
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
@@ -328,6 +331,7 @@ async def generate_personalized_variants(
             variants=formatted_variants,
         )
     except Exception as e:
+        logger.exception("Error generating variants for topic '%s'", request.topic)
         raise HTTPException(
             status_code=500,
             detail=f"Error generating variants: {str(e)}",
@@ -396,6 +400,7 @@ async def generate_personalized_explanation(
             style=best_style,
         )
     except Exception as e:
+        logger.exception("Error generating explanation for topic '%s'", request.topic)
         raise HTTPException(
             status_code=500,
             detail=f"Error generating explanation: {str(e)}",

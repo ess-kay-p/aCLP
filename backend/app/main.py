@@ -1,12 +1,23 @@
 """Lexicon FastAPI backend application."""
-from fastapi import FastAPI
+import logging
+import traceback
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import HTTPException as FastAPIHTTPException
+from fastapi.responses import JSONResponse
 import os
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
 
 # Load environment variables
 load_dotenv()
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
 
 # Import routers
 from .routers import onboarding, explain, feedback, auth, questionnaire, categories
@@ -33,7 +44,7 @@ async def lifespan(app: FastAPI):
             )
             db.add(admin_user)
             db.commit()
-            print("✓ Admin user created: admin@example.com / admin123")
+            logger.info("Admin user created: admin@example.com / admin123")
     finally:
         db.close()
 
@@ -58,6 +69,23 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error(
+        "Unhandled exception on %s %s\n%s",
+        request.method, request.url.path,
+        traceback.format_exc(),
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
+
+
+@app.exception_handler(FastAPIHTTPException)
+async def http_exception_handler(request: Request, exc: FastAPIHTTPException):
+    level = logging.ERROR if exc.status_code >= 500 else logging.WARNING
+    logger.log(level, "HTTP %s on %s %s: %s", exc.status_code, request.method, request.url.path, exc.detail)
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
 
 # Include routers
 app.include_router(auth.router)

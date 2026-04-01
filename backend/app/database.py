@@ -1,8 +1,11 @@
 """Database configuration and setup for Lexicon."""
+import logging
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 import os
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 # Use SQLite database in backend directory
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./lexicon.db")
@@ -79,6 +82,6 @@ def seed_admin_questions():
         db.commit()
     except Exception as e:
         db.rollback()
-        print(f"Error seeding admin questions: {e}")
+        logger.exception("Error seeding admin questions")
     finally:
         db.close()
