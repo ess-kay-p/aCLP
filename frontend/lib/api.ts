@@ -5,7 +5,8 @@ import { getToken, getAuthHeader } from "./auth";
 
 // Ensure HTTPS in production
 let API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-if (typeof window !== 'undefined' && window.location.protocol === 'https:' && API_BASE.startsWith('http://')) {
+// Enforce HTTPS for non-localhost URLs regardless of env var configuration
+if (API_BASE.startsWith('http://') && !API_BASE.includes('localhost') && !API_BASE.includes('127.0.0.1')) {
   API_BASE = API_BASE.replace('http://', 'https://');
 }
 
