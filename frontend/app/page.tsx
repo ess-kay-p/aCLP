@@ -98,7 +98,7 @@ export default function Home() {
       await resetUserProfile();
     }
     localStorage.removeItem("lexicon_session_id");
-    window.location.reload();
+    router.push("/onboarding");
   };
 
   const handleLogout = () => {
