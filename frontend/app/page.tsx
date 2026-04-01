@@ -56,7 +56,12 @@ export default function Home() {
             setHasProfile(false);
           }
         } else {
-          const sessionId = getSessionId();
+          const sessionId = localStorage.getItem("lexicon_session_id");
+          if (!sessionId) {
+            setIsLoading(false);
+            router.push("/login");
+            return;
+          }
 
           try {
             const profileResult = await getStudentProfile(sessionId);

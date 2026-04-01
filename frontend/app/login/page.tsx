@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { login, getSessionId } from "@/lib/api";
 import { setToken } from "@/lib/auth";
 import Link from "next/link";
 
@@ -102,7 +102,7 @@ export default function LoginPage() {
           </p>
 
           <button
-            onClick={() => router.push("/")}
+            onClick={() => { getSessionId(); router.push("/"); }}
             className="w-full text-center text-sm text-slate-600 hover:text-slate-800"
           >
             Continue as guest
