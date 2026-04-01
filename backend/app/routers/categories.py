@@ -62,7 +62,7 @@ async def get_optional_user(
     return user
 
 
-@router.get("", response_model=List[CategoryResponse])
+@router.get("/", response_model=List[CategoryResponse])
 async def list_categories(db: Session = Depends(get_db)):
     """Get all categories (public)."""
     try:
@@ -73,7 +73,7 @@ async def list_categories(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
     category_data: CategoryCreate,
     current_user: User = Depends(get_current_user_from_header),

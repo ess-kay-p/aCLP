@@ -171,7 +171,10 @@ export async function getQuestions(categoryId?: number): Promise<ApiResponse<Que
 export async function getStudentProfile(
   sessionId: string
 ): Promise<ApiResponse<StudentProfile>> {
-  return fetchApi<StudentProfile>(`/api/onboarding/profile/${sessionId}`);
+  const url = sessionId
+    ? `/api/onboarding/profile/${sessionId}`
+    : `/api/onboarding/profile`;
+  return fetchApi<StudentProfile>(url);
 }
 
 export async function checkSessionProfile(

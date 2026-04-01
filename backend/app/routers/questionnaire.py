@@ -65,7 +65,7 @@ async def get_optional_user(
     return user
 
 
-@router.get("", response_model=QuestionnaireResponse)
+@router.get("/", response_model=QuestionnaireResponse)
 async def get_questionnaire(
     category_id: Optional[int] = None,
     current_user: Optional[User] = Depends(get_optional_user),
@@ -111,7 +111,7 @@ async def get_questionnaire(
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("", status_code=status.HTTP_201_CREATED)
+@router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_question(
     question_data: QuestionData,
     current_user: User = Depends(get_current_user_from_header),
