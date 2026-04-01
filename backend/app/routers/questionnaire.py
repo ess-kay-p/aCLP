@@ -1,5 +1,8 @@
 """Questionnaire management routes for admin and user configuration."""
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, Header
+
+logger = logging.getLogger(__name__)
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 from typing import List, Optional
@@ -62,7 +65,7 @@ async def get_optional_user(
     return user
 
 
-@router.get("/", response_model=QuestionnaireResponse)
+@router.get("", response_model=QuestionnaireResponse)
 async def get_questionnaire(
     category_id: Optional[int] = None,
     current_user: Optional[User] = Depends(get_optional_user),
@@ -77,66 +80,76 @@ async def get_questionnaire(
     For authenticated users with custom questions, returns their custom questions.
     Otherwise returns admin defaults filtered by category_id.
     """
-    if current_user:
-        # Get user's custom questions for this category
-        user_questions = db.query(UserQuestion).filter(
-            UserQuestion.user_id == current_user.id,
-            UserQuestion.category_id == category_id
-        ).order_by(UserQuestion.order).all()
+    try:
+        if current_user:
+            # Get user's custom questions for this category
+            user_questions = db.query(UserQuestion).filter(
+                UserQuestion.user_id == current_user.id,
+                UserQuestion.category_id == category_id
+            ).order_by(UserQuestion.order).all()
 
-        if user_questions:
-            questions = [q.question_data for q in user_questions]
-            return QuestionnaireResponse(questions=questions)
+            if user_questions:
+                questions = [q.question_data for q in user_questions]
+                return QuestionnaireResponse(questions=questions)
 
-    # Fall back to admin defaults - filter by category_id
-    if category_id:
-        # Get category-specific questions
-        admin_questions = db.query(AdminQuestion).filter(
-            AdminQuestion.category_id == category_id
-        ).order_by(AdminQuestion.order).all()
-    else:
-        # Get general questions (no category)
-        admin_questions = db.query(AdminQuestion).filter(
-            AdminQuestion.category_id.is_(None)
-        ).order_by(AdminQuestion.order).all()
+        # Fall back to admin defaults - filter by category_id
+        if category_id:
+            # Get category-specific questions
+            admin_questions = db.query(AdminQuestion).filter(
+                AdminQuestion.category_id == category_id
+            ).order_by(AdminQuestion.order).all()
+        else:
+            # Get general questions (no category)
+            admin_questions = db.query(AdminQuestion).filter(
+                AdminQuestion.category_id.is_(None)
+            ).order_by(AdminQuestion.order).all()
 
-    questions = [q.question_data for q in admin_questions]
-    return QuestionnaireResponse(questions=questions)
+        questions = [q.question_data for q in admin_questions]
+        return QuestionnaireResponse(questions=questions)
+    except Exception:
+        logger.exception("get questionnaire failed for category_id=%s", category_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
-@router.post("/", status_code=status.HTTP_201_CREATED)
+@router.post("", status_code=status.HTTP_201_CREATED)
 async def create_question(
     question_data: QuestionData,
     current_user: User = Depends(get_current_user_from_header),
     db: Session = Depends(get_db),
 ):
     """Create a new question (admin only)."""
-    if not current_user.is_admin:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Only admins can create default questions",
-        )
-
-    # If category_id provided, verify it exists
-    if question_data.category_id:
-        category = db.query(Category).filter(Category.id == question_data.category_id).first()
-        if not category:
+    try:
+        if not current_user.is_admin:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Invalid category_id",
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Only admins can create default questions",
             )
 
-    # Create admin question
-    admin_q = AdminQuestion(
-        category_id=question_data.category_id,
-        order=question_data.id,
-        question_data=question_data.dict(),
-    )
-    db.add(admin_q)
-    db.commit()
-    db.refresh(admin_q)
+        # If category_id provided, verify it exists
+        if question_data.category_id:
+            category = db.query(Category).filter(Category.id == question_data.category_id).first()
+            if not category:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid category_id",
+                )
 
-    return {"id": admin_q.id, "status": "created"}
+        # Create admin question
+        admin_q = AdminQuestion(
+            category_id=question_data.category_id,
+            order=question_data.id,
+            question_data=question_data.dict(),
+        )
+        db.add(admin_q)
+        db.commit()
+        db.refresh(admin_q)
+
+        return {"id": admin_q.id, "status": "created"}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("create question failed for id=%s", question_data.id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.put("/{question_id}")
@@ -147,35 +160,41 @@ async def update_question(
     db: Session = Depends(get_db),
 ):
     """Update a question (admin or question owner)."""
-    # Check if it's a user question
-    user_q = db.query(UserQuestion).filter(
-        UserQuestion.id == question_id,
-        UserQuestion.user_id == current_user.id,
-    ).first()
+    try:
+        # Check if it's a user question
+        user_q = db.query(UserQuestion).filter(
+            UserQuestion.id == question_id,
+            UserQuestion.user_id == current_user.id,
+        ).first()
 
-    if user_q:
-        user_q.question_data = question_data.dict()
-        db.commit()
-        return {"id": user_q.id, "status": "updated"}
+        if user_q:
+            user_q.question_data = question_data.dict()
+            db.commit()
+            return {"id": user_q.id, "status": "updated"}
 
-    # Check if it's an admin question (admin only)
-    admin_q = db.query(AdminQuestion).filter(AdminQuestion.id == question_id).first()
+        # Check if it's an admin question (admin only)
+        admin_q = db.query(AdminQuestion).filter(AdminQuestion.id == question_id).first()
 
-    if admin_q:
-        if not current_user.is_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can edit default questions",
-            )
+        if admin_q:
+            if not current_user.is_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only admins can edit default questions",
+                )
 
-        admin_q.question_data = question_data.dict()
-        db.commit()
-        return {"id": admin_q.id, "status": "updated"}
+            admin_q.question_data = question_data.dict()
+            db.commit()
+            return {"id": admin_q.id, "status": "updated"}
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Question not found",
-    )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("update question failed for id=%s", question_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.delete("/{question_id}")
@@ -185,35 +204,41 @@ async def delete_question(
     db: Session = Depends(get_db),
 ):
     """Delete a question (admin or question owner)."""
-    # Check if it's a user question
-    user_q = db.query(UserQuestion).filter(
-        UserQuestion.id == question_id,
-        UserQuestion.user_id == current_user.id,
-    ).first()
+    try:
+        # Check if it's a user question
+        user_q = db.query(UserQuestion).filter(
+            UserQuestion.id == question_id,
+            UserQuestion.user_id == current_user.id,
+        ).first()
 
-    if user_q:
-        db.delete(user_q)
-        db.commit()
-        return {"status": "deleted"}
+        if user_q:
+            db.delete(user_q)
+            db.commit()
+            return {"status": "deleted"}
 
-    # Check if it's an admin question (admin only)
-    admin_q = db.query(AdminQuestion).filter(AdminQuestion.id == question_id).first()
+        # Check if it's an admin question (admin only)
+        admin_q = db.query(AdminQuestion).filter(AdminQuestion.id == question_id).first()
 
-    if admin_q:
-        if not current_user.is_admin:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Only admins can delete default questions",
-            )
+        if admin_q:
+            if not current_user.is_admin:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Only admins can delete default questions",
+                )
 
-        db.delete(admin_q)
-        db.commit()
-        return {"status": "deleted"}
+            db.delete(admin_q)
+            db.commit()
+            return {"status": "deleted"}
 
-    raise HTTPException(
-        status_code=status.HTTP_404_NOT_FOUND,
-        detail="Question not found",
-    )
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Question not found",
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("delete question failed for id=%s", question_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/reset")
@@ -222,8 +247,12 @@ async def reset_to_defaults(
     db: Session = Depends(get_db),
 ):
     """Reset user's custom questions to admin defaults."""
-    # Delete all user's custom questions
-    db.query(UserQuestion).filter(UserQuestion.user_id == current_user.id).delete()
-    db.commit()
+    try:
+        # Delete all user's custom questions
+        db.query(UserQuestion).filter(UserQuestion.user_id == current_user.id).delete()
+        db.commit()
 
-    return {"status": "reset to defaults"}
+        return {"status": "reset to defaults"}
+    except Exception:
+        logger.exception("reset questionnaire failed for user_id=%s", current_user.id)
+        raise HTTPException(status_code=500, detail="Internal server error")

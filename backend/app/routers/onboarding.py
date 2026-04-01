@@ -124,20 +124,24 @@ async def get_questionnaire(
 
     For authenticated users, returns custom questions if configured, otherwise admin defaults.
     """
-    if category_id:
-        # Get category-specific questions from AdminQuestion
-        admin_questions = db.query(AdminQuestion).filter(
-            AdminQuestion.category_id == category_id
-        ).order_by(AdminQuestion.order).all()
-        questions = [q.question_data for q in admin_questions]
-    else:
-        # Get general questions (no category)
-        admin_questions = db.query(AdminQuestion).filter(
-            AdminQuestion.category_id.is_(None)
-        ).order_by(AdminQuestion.order).all()
-        questions = [q.question_data for q in admin_questions]
+    try:
+        if category_id:
+            # Get category-specific questions from AdminQuestion
+            admin_questions = db.query(AdminQuestion).filter(
+                AdminQuestion.category_id == category_id
+            ).order_by(AdminQuestion.order).all()
+            questions = [q.question_data for q in admin_questions]
+        else:
+            # Get general questions (no category)
+            admin_questions = db.query(AdminQuestion).filter(
+                AdminQuestion.category_id.is_(None)
+            ).order_by(AdminQuestion.order).all()
+            questions = [q.question_data for q in admin_questions]
 
-    return QuestionnaireResponse(questions=questions)
+        return QuestionnaireResponse(questions=questions)
+    except Exception:
+        logger.exception("get questionnaire failed for category_id=%s", category_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/profile", response_model=StudentProfile)
@@ -153,30 +157,36 @@ async def get_student_profile(
     For session-based users, uses session_id parameter.
     Returns the 8D vector for displaying on the profile chart.
     """
-    if current_user:
-        user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
-        if not user_vector:
+    try:
+        if current_user:
+            user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+            if not user_vector:
+                raise HTTPException(
+                    status_code=404,
+                    detail="Student profile not found. Complete onboarding first.",
+                )
+            return StudentProfile(user_id=current_user.id, vector=user_vector.vector)
+
+        # Session-based fallback
+        if not session_id:
+            raise HTTPException(
+                status_code=400,
+                detail="Either authorization header or session_id parameter required",
+            )
+
+        vector = get_student_vector(session_id)
+        if vector is None:
             raise HTTPException(
                 status_code=404,
                 detail="Student profile not found. Complete onboarding first.",
             )
-        return StudentProfile(user_id=current_user.id, vector=user_vector.vector)
 
-    # Session-based fallback
-    if not session_id:
-        raise HTTPException(
-            status_code=400,
-            detail="Either authorization header or session_id parameter required",
-        )
-
-    vector = get_student_vector(session_id)
-    if vector is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Student profile not found. Complete onboarding first.",
-        )
-
-    return StudentProfile(session_id=session_id, vector=vector)
+        return StudentProfile(session_id=session_id, vector=vector)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get student profile failed for session_id='%s'", session_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.get("/profile/{session_id}", response_model=StudentProfile)
@@ -186,14 +196,20 @@ async def get_student_profile_by_session(session_id: str, db: Session = Depends(
 
     Deprecated: use GET /profile with session_id query parameter instead.
     """
-    vector = get_student_vector(session_id, db)
-    if vector is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Student profile not found. Complete onboarding first.",
-        )
+    try:
+        vector = get_student_vector(session_id, db)
+        if vector is None:
+            raise HTTPException(
+                status_code=404,
+                detail="Student profile not found. Complete onboarding first.",
+            )
 
-    return StudentProfile(session_id=session_id, vector=vector)
+        return StudentProfile(session_id=session_id, vector=vector)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get student profile by session failed for session_id='%s'", session_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/submit", response_model=StudentProfile)
@@ -210,79 +226,85 @@ async def submit_answers(
 
     Supports both authenticated users (saves to DB) and session-based profiles (in-memory).
     """
-    # Load questionnaire for validation
-    questions = load_questionnaire_from_db(db, current_user)
-    questions_by_id = {q["id"]: q for q in questions}
+    try:
+        # Load questionnaire for validation
+        questions = load_questionnaire_from_db(db, current_user)
+        questions_by_id = {q["id"]: q for q in questions}
 
-    # If user is authenticated, use user_id; otherwise use session_id
-    if current_user:
-        # Check if user has existing vector
-        user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
-        if user_vector:
-            vector = user_vector.vector.copy() if isinstance(user_vector.vector, list) else list(user_vector.vector.values())
+        # If user is authenticated, use user_id; otherwise use session_id
+        if current_user:
+            # Check if user has existing vector
+            user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+            if user_vector:
+                vector = user_vector.vector.copy() if isinstance(user_vector.vector, list) else list(user_vector.vector.values())
+            else:
+                vector = create_zero_vector()
         else:
-            vector = create_zero_vector()
-    else:
-        # Session-based approach
-        session_id = request.session_id or str(uuid.uuid4())
-        existing_vector = student_profiles.get(session_id)
-        if existing_vector:
-            vector = existing_vector.copy()
+            # Session-based approach
+            session_id = request.session_id or str(uuid.uuid4())
+            existing_vector = student_profiles.get(session_id)
+            if existing_vector:
+                vector = existing_vector.copy()
+            else:
+                vector = create_zero_vector()
+
+        # Process each answer
+        for question_id, option_index in request.answers.items():
+            question_id = int(question_id)
+
+            if question_id not in questions_by_id:
+                raise HTTPException(status_code=400, detail=f"Invalid question ID: {question_id}")
+
+            question = questions_by_id[question_id]
+
+            if option_index < 0 or option_index >= len(question["options"]):
+                raise HTTPException(status_code=400, detail=f"Invalid option index for question {question_id}")
+
+            option = question["options"][option_index]
+
+            # Apply dimension updates
+            if "dimension_updates" in option:
+                from ..services.vector_ops import DIMENSIONS
+                for dimension_name, update_value in option["dimension_updates"].items():
+                    if dimension_name in DIMENSIONS:
+                        dim_idx = DIMENSIONS.index(dimension_name)
+                        vector[dim_idx] = min(vector[dim_idx] + update_value, VECTOR_MAX)
+
+        # If a style was selected, refine the vector further
+        if request.selected_style:
+            style_vector = create_style_vector(request.selected_style)
+            # Blend with existing vector (weighted average)
+            for i in range(len(vector)):
+                vector[i] = 0.7 * vector[i] + 0.3 * style_vector[i]
+
+        # Store vector
+        if current_user:
+            # Save to database
+            user_vector_obj = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+            if user_vector_obj:
+                user_vector_obj.vector = vector
+            else:
+                user_vector_obj = UserVector(user_id=current_user.id, vector=vector)
+                db.add(user_vector_obj)
+            db.commit()
+            return StudentProfile(user_id=current_user.id, vector=vector)
         else:
-            vector = create_zero_vector()
-
-    # Process each answer
-    for question_id, option_index in request.answers.items():
-        question_id = int(question_id)
-
-        if question_id not in questions_by_id:
-            raise HTTPException(status_code=400, detail=f"Invalid question ID: {question_id}")
-
-        question = questions_by_id[question_id]
-
-        if option_index < 0 or option_index >= len(question["options"]):
-            raise HTTPException(status_code=400, detail=f"Invalid option index for question {question_id}")
-
-        option = question["options"][option_index]
-
-        # Apply dimension updates
-        if "dimension_updates" in option:
-            from ..services.vector_ops import DIMENSIONS
-            for dimension_name, update_value in option["dimension_updates"].items():
-                if dimension_name in DIMENSIONS:
-                    dim_idx = DIMENSIONS.index(dimension_name)
-                    vector[dim_idx] = min(vector[dim_idx] + update_value, VECTOR_MAX)
-
-    # If a style was selected, refine the vector further
-    if request.selected_style:
-        style_vector = create_style_vector(request.selected_style)
-        # Blend with existing vector (weighted average)
-        for i in range(len(vector)):
-            vector[i] = 0.7 * vector[i] + 0.3 * style_vector[i]
-
-    # Store vector
-    if current_user:
-        # Save to database
-        user_vector_obj = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
-        if user_vector_obj:
-            user_vector_obj.vector = vector
-        else:
-            user_vector_obj = UserVector(user_id=current_user.id, vector=vector)
-            db.add(user_vector_obj)
-        db.commit()
-        return StudentProfile(user_id=current_user.id, vector=vector)
-    else:
-        # Save to database (session-based)
-        session_vector_obj = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
-        if session_vector_obj:
-            session_vector_obj.vector = vector
-        else:
-            session_vector_obj = SessionVector(session_id=session_id, vector=vector)
-            db.add(session_vector_obj)
-        db.commit()
-        # Also save to memory for backward compatibility
-        student_profiles[session_id] = vector
-        return StudentProfile(session_id=session_id, vector=vector)
+            # Save to database (session-based)
+            session_vector_obj = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
+            if session_vector_obj:
+                session_vector_obj.vector = vector
+            else:
+                session_vector_obj = SessionVector(session_id=session_id, vector=vector)
+                db.add(session_vector_obj)
+            db.commit()
+            # Also save to memory for backward compatibility
+            student_profiles[session_id] = vector
+            return StudentProfile(session_id=session_id, vector=vector)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("submit answers failed for session_id='%s'", request.session_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
 
 
 @router.post("/generate-personalized", response_model=PersonalizedVariantResponse)
@@ -443,14 +465,20 @@ async def reset_profile(
     db: Session = Depends(get_db),
 ):
     """Reset user's profile (delete their vector)."""
-    if not current_user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Not authenticated",
-        )
+    try:
+        if not current_user:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Not authenticated",
+            )
 
-    # Delete user's vector
-    db.query(UserVector).filter(UserVector.user_id == current_user.id).delete()
-    db.commit()
+        # Delete user's vector
+        db.query(UserVector).filter(UserVector.user_id == current_user.id).delete()
+        db.commit()
 
-    return {"status": "profile reset"}
+        return {"status": "profile reset"}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("reset profile failed")
+        raise HTTPException(status_code=500, detail="Internal server error")

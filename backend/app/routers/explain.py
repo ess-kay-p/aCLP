@@ -1,5 +1,8 @@
 """Routes for getting explanations."""
+import logging
 from fastapi import APIRouter, HTTPException, Depends, Header
+
+logger = logging.getLogger(__name__)
 from typing import Dict, List, Optional
 from sqlalchemy.orm import Session
 
@@ -61,50 +64,56 @@ async def get_explanation(
         "concept": "acceleration"
     }
     """
-    student_vector = None
-    concept = request.get("concept")
+    try:
+        student_vector = None
+        concept = request.get("concept")
 
-    if not concept:
-        raise HTTPException(status_code=400, detail="Missing concept")
+        if not concept:
+            raise HTTPException(status_code=400, detail="Missing concept")
 
-    # Try to get authenticated user vector first
-    if current_user:
-        user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
-        if user_vector:
-            student_vector = user_vector.vector
+        # Try to get authenticated user vector first
+        if current_user:
+            user_vector = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+            if user_vector:
+                student_vector = user_vector.vector
 
-    # Fall back to session-based vector
-    if not student_vector:
-        session_id = request.get("session_id")
-        if not session_id:
-            raise HTTPException(status_code=400, detail="Missing session_id or authentication")
-        student_vector = get_student_vector(session_id, db)
+        # Fall back to session-based vector
+        if not student_vector:
+            session_id = request.get("session_id")
+            if not session_id:
+                raise HTTPException(status_code=400, detail="Missing session_id or authentication")
+            student_vector = get_student_vector(session_id, db)
 
-    if student_vector is None:
-        raise HTTPException(status_code=404, detail="Student profile not found. Complete onboarding first.")
+        if student_vector is None:
+            raise HTTPException(status_code=404, detail="Student profile not found. Complete onboarding first.")
 
-    # Load explanations
-    explanations = load_explanations()
+        # Load explanations
+        explanations = load_explanations()
 
-    # Filter for this concept
-    concept_explanations = [
-        e for e in explanations
-        if e["concept"] == concept
-    ]
+        # Filter for this concept
+        concept_explanations = [
+            e for e in explanations
+            if e["concept"] == concept
+        ]
 
-    if not concept_explanations:
-        raise HTTPException(status_code=404, detail=f"No explanations found for concept: {concept}")
+        if not concept_explanations:
+            raise HTTPException(status_code=404, detail=f"No explanations found for concept: {concept}")
 
-    # Find best match
-    best = find_best_explanation(student_vector, concept_explanations)
+        # Find best match
+        best = find_best_explanation(student_vector, concept_explanations)
 
-    if not best:
-        raise HTTPException(status_code=500, detail="Failed to find best explanation")
+        if not best:
+            raise HTTPException(status_code=500, detail="Failed to find best explanation")
 
-    return {
-        "id": best["id"],
-        "concept": best["concept"],
-        "style": best["style"],
-        "text": best["text"],
-        "vector": best["vector"],
-    }
+        return {
+            "id": best["id"],
+            "concept": best["concept"],
+            "style": best["style"],
+            "text": best["text"],
+            "vector": best["vector"],
+        }
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get explanation failed for concept '%s'", request.get("concept"))
+        raise HTTPException(status_code=500, detail="Internal server error")
