@@ -12,7 +12,7 @@ from ..models import StudentProfile
 from ..services.vector_ops import create_zero_vector, VECTOR_MAX, create_style_vector
 from ..services.llm import generate_explanation_variants
 from ..database import get_db
-from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector, QuestionHistory
+from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector, QuestionHistory, UserProfilingProfile
 from ..services.auth_service import decode_token
 from pydantic import BaseModel
 from sqlalchemy import and_
@@ -97,12 +97,12 @@ def load_questionnaire_from_db(db: Session, user: Optional[User] = None) -> List
         ).order_by(UserQuestion.order).all()
 
         if user_questions:
-            return [q.question_data for q in user_questions]
+            return [{**q.question_data, "id": q.id} for q in user_questions]
 
     # Fall back to admin questions
     admin_questions = db.query(AdminQuestion).order_by(AdminQuestion.order).all()
     if admin_questions:
-        return [q.question_data for q in admin_questions]
+        return [{**q.question_data, "id": q.id} for q in admin_questions]
 
     # If no questions in DB, try to load from JSON (for migration)
     try:
@@ -135,12 +135,12 @@ async def get_questionnaire(
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id == category_id
             ).order_by(AdminQuestion.order).all()
-            questions = [q.question_data for q in admin_questions]
+            questions = [{**q.question_data, "id": q.id} for q in admin_questions]
         else:
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id.is_(None)
             ).order_by(AdminQuestion.order).all()
-            questions = [q.question_data for q in admin_questions]
+            questions = [{**q.question_data, "id": q.id} for q in admin_questions]
 
         if question_type:
             types = question_type.split(",")
@@ -285,6 +285,22 @@ async def submit_answers(
             for i in range(len(vector)):
                 vector[i] = 0.7 * vector[i] + 0.3 * style_vector[i]
 
+        # Resolve and persist profiling/open answers as human-readable text
+        profile_data = {}
+        if request.profiling_answers:
+            for question_id, selected_indices in request.profiling_answers.items():
+                qid = int(question_id)
+                if qid in questions_by_id:
+                    q = questions_by_id[qid]
+                    texts = [q["options"][i]["text"] for i in selected_indices if i < len(q["options"])]
+                    if texts:
+                        profile_data[q["question"]] = ", ".join(texts)
+        if request.open_answers:
+            for question_id, text_answer in request.open_answers.items():
+                qid = int(question_id)
+                if qid in questions_by_id and text_answer.strip():
+                    profile_data[questions_by_id[qid]["question"]] = text_answer.strip()
+
         # Store vector
         if current_user:
             # Save to database
@@ -294,6 +310,12 @@ async def submit_answers(
             else:
                 user_vector_obj = UserVector(user_id=current_user.id, vector=vector)
                 db.add(user_vector_obj)
+            if profile_data:
+                existing_profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.user_id == current_user.id).first()
+                if existing_profile:
+                    existing_profile.profile_data = profile_data
+                else:
+                    db.add(UserProfilingProfile(user_id=current_user.id, profile_data=profile_data))
             db.commit()
             return StudentProfile(user_id=current_user.id, vector=vector)
         else:
@@ -304,6 +326,12 @@ async def submit_answers(
             else:
                 session_vector_obj = SessionVector(session_id=session_id, vector=vector)
                 db.add(session_vector_obj)
+            if profile_data:
+                existing_profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.session_id == session_id).first()
+                if existing_profile:
+                    existing_profile.profile_data = profile_data
+                else:
+                    db.add(UserProfilingProfile(session_id=session_id, profile_data=profile_data))
             db.commit()
             # Also save to memory for backward compatibility
             student_profiles[session_id] = vector
@@ -345,10 +373,19 @@ async def generate_personalized_variants(
             detail="Student profile not found. Complete questionnaire first.",
         )
 
+    # Retrieve profiling context
+    profiling_context = None
+    if current_user:
+        profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.user_id == current_user.id).first()
+    else:
+        profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.session_id == request.session_id).first()
+    if profile:
+        profiling_context = profile.profile_data
+
     try:
         # Generate variants based on topic and student profile
         # The LLM will generate explanations tailored to the user's learning style
-        variants = generate_explanation_variants(request.topic, student_vector)
+        variants = generate_explanation_variants(request.topic, student_vector, profiling_context)
 
         # Format variants for response
         formatted_variants = [
@@ -398,11 +435,20 @@ async def generate_personalized_explanation(
             detail="Student profile not found. Complete questionnaire first.",
         )
 
+    # Retrieve profiling context
+    profiling_context = None
+    if current_user:
+        profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.user_id == current_user.id).first()
+    else:
+        profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.session_id == request.session_id).first()
+    if profile:
+        profiling_context = profile.profile_data
+
     try:
         from ..services.vector_ops import cosine_similarity
 
         # Generate variants (will pick the best one based on student vector)
-        variants = generate_explanation_variants(request.topic, student_vector)
+        variants = generate_explanation_variants(request.topic, student_vector, profiling_context)
 
         # Pick the best matching style based on cosine similarity with student vector
         best_style = None

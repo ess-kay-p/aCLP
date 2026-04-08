@@ -110,7 +110,7 @@ export default function SettingsPage() {
   };
 
   const loadQuestions = async (categoryId: number | null) => {
-    const result = await getQuestionnaire(categoryId || undefined);
+    const result = await getQuestionnaire(categoryId || undefined, "vector");
     if (result.data) {
       setQuestions(result.data.questions);
     } else {

@@ -58,6 +58,7 @@ def _get_learning_style_guidance(student_vector: Optional[List[float]]) -> str:
 def generate_explanation_variants(
     topic: str,
     student_vector: Optional[List[float]] = None,
+    profiling_context: Optional[dict] = None,
 ) -> Dict[str, str]:
     """
     Generate 4 explanation variants for a topic using LiteLLM.
@@ -65,12 +66,18 @@ def generate_explanation_variants(
     Args:
         topic: The user's question or topic
         student_vector: Optional 8D vector describing learner preferences
+        profiling_context: Optional dict of {question_text: answer_text} from profiling answers
 
     Returns:
         Dict with keys: "sports", "step_by_step", "narrative", "technical"
     """
     # Get personalized guidance if vector is provided
     learning_guidance = _get_learning_style_guidance(student_vector)
+
+    profiling_text = ""
+    if profiling_context:
+        lines = "\n".join(f"- {q}: {a}" for q, a in profiling_context.items())
+        profiling_text = f"\nStudent profile (from their own words):\n{lines}\n"
 
     # Build prompt with optional personalization
     prompt_base = f"""Given the topic or question: "{topic}"
@@ -85,13 +92,16 @@ Generate 4 explanations of this concept, each in a DIFFERENT style:
 Return ONLY a JSON object with these exact keys: {{"sports": "...", "step_by_step": "...", "narrative": "...", "technical": "..."}}
 Do not include any other text or markdown formatting."""
 
-    if learning_guidance:
-        prompt = f"""Student learning preferences:
-{learning_guidance}
-
+    if learning_guidance or profiling_text:
+        context_block = ""
+        if learning_guidance:
+            context_block += f"Student learning preferences:\n{learning_guidance}\n"
+        if profiling_text:
+            context_block += profiling_text
+        prompt = f"""{context_block}
 {prompt_base}
 
-When generating explanations, keep these preferences in mind and tailor the explanations accordingly."""
+When generating explanations, keep the student's preferences and profile in mind and tailor the explanations accordingly."""
     else:
         prompt = prompt_base
 

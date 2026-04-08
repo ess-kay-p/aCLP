@@ -95,7 +95,7 @@ async def get_questionnaire(
             ).order_by(UserQuestion.order).all()
 
             if user_questions:
-                questions = [q.question_data for q in user_questions]
+                questions = [{**q.question_data, "id": q.id} for q in user_questions]
                 if question_type:
                     types = question_type.split(",")
                     questions = [q for q in questions if q.get("question_type", "vector") in types]
@@ -111,7 +111,7 @@ async def get_questionnaire(
                 AdminQuestion.category_id.is_(None)
             ).order_by(AdminQuestion.order).all()
 
-        questions = [q.question_data for q in admin_questions]
+        questions = [{**q.question_data, "id": q.id} for q in admin_questions]
         if question_type:
             types = question_type.split(",")
             questions = [q for q in questions if q.get("question_type", "vector") in types]

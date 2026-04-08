@@ -12,7 +12,7 @@ import {
 } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 
-type OnboardingStep = "profiling-questions" | "initial-questions" | "category-selection" | "category-questions" | "loading" | "completing";
+type OnboardingStep = "profiling-questions" | "initial-questions" | "category-selection" | "category-questions" | "loading" | "completing" | "summary";
 
 export default function OnboardingPage() {
   const router = useRouter();
@@ -46,7 +46,7 @@ export default function OnboardingPage() {
     const loadInitialData = async () => {
       try {
         const [questionsResult, categoriesResult, profilingResult] = await Promise.all([
-          getQuestions(),
+          getQuestions(undefined, "vector"),
           getCategories(true),
           getQuestions(undefined, "profiling,open"),
         ]);
@@ -89,6 +89,7 @@ export default function OnboardingPage() {
   const handleToggleProfilingOption = (questionId: number, optionIndex: number) => {
     const current = profilingAnswers[questionId] || [];
     const alreadySelected = current.includes(optionIndex);
+    setError("");
     setProfilingAnswers({
       ...profilingAnswers,
       [questionId]: alreadySelected
@@ -101,6 +102,10 @@ export default function OnboardingPage() {
     const currentQ = profilingQuestions[profilingQuestionIndex];
     if (currentQ.question_type === "open" && !openAnswers[currentQ.id]?.trim()) {
       setError("Please enter an answer before continuing.");
+      return;
+    }
+    if (currentQ.question_type !== "open" && !(profilingAnswers[currentQ.id]?.length > 0)) {
+      setError("Please select at least one option before continuing.");
       return;
     }
     setError("");
@@ -186,9 +191,12 @@ export default function OnboardingPage() {
         return;
       }
 
-      setTimeout(() => {
+      setIsLoading(false);
+      if (profilingQuestions.length > 0) {
+        setStep("summary");
+      } else {
         router.push("/");
-      }, 500);
+      }
     } catch (err) {
       setError("Failed to complete onboarding");
       setIsLoading(false);
@@ -281,6 +289,11 @@ export default function OnboardingPage() {
         {/* STEP 0: Profiling Questions (icon multi-select or text input) */}
         {step === "profiling-questions" && !isLoading && (
           <div>
+            <div className="text-center mb-6">
+              <div className="text-4xl mb-2">🎨</div>
+              <h3 className="text-xl font-bold text-purple-700">Learning Style</h3>
+              <p className="text-sm text-slate-500 mt-1">Discover how you learn best</p>
+            </div>
             <div className="mb-8">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-medium text-slate-600">
@@ -334,7 +347,7 @@ export default function OnboardingPage() {
                         onClick={() => handleToggleProfilingOption(qId, index)}
                         className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all text-center ${
                           isSelected
-                            ? "border-indigo-500 bg-indigo-50"
+                            ? "border-green-500 bg-green-50"
                             : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
                         }`}
                       >
@@ -374,6 +387,11 @@ export default function OnboardingPage() {
         {/* STEP 1: Initial Questions */}
         {step === "initial-questions" && !isLoading && (
           <div>
+            <div className="text-center mb-6">
+              <div className="text-4xl mb-2">🧠</div>
+              <h3 className="text-xl font-bold text-indigo-700">Your Preferences</h3>
+              <p className="text-sm text-slate-500 mt-1">Tell us about your learning habits</p>
+            </div>
             <div className="mb-8">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-medium text-slate-600">
@@ -469,6 +487,11 @@ export default function OnboardingPage() {
         {/* STEP 3: Category-Specific Questions */}
         {step === "category-questions" && !isLoading && (
           <div>
+            <div className="text-center mb-6">
+              <div className="text-4xl mb-2">📚</div>
+              <h3 className="text-xl font-bold text-amber-700">{selectedCategory?.name}</h3>
+              <p className="text-sm text-slate-500 mt-1">Questions tailored to your subject</p>
+            </div>
             <div className="mb-8">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-sm font-medium text-slate-600">
@@ -512,6 +535,51 @@ export default function OnboardingPage() {
               disabled={isLoading}
             >
               ← Back
+            </button>
+          </div>
+        )}
+
+        {/* Summary Step */}
+        {step === "summary" && (
+          <div>
+            <div className="text-center mb-8">
+              <div className="text-4xl mb-3">🎉</div>
+              <h2 className="text-2xl font-bold text-slate-900">Profile complete!</h2>
+              <p className="text-slate-500 mt-1">Here's what we learned about you</p>
+            </div>
+
+            <div className="mb-8">
+              {profilingQuestions.map((q) => (
+                <div key={q.id} className="mb-6">
+                  <p className="text-sm font-semibold text-slate-700 mb-2">{q.question}</p>
+                  {q.question_type === "open" ? (
+                    <p className="text-slate-600 italic bg-slate-50 rounded p-3">
+                      {openAnswers[q.id] || <span className="text-slate-400">No answer provided</span>}
+                    </p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {(profilingAnswers[q.id] || []).map((optIdx) => (
+                        <span
+                          key={optIdx}
+                          className="inline-block px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
+                        >
+                          {q.options[optIdx]?.text}
+                        </span>
+                      ))}
+                      {(profilingAnswers[q.id] || []).length === 0 && (
+                        <span className="text-slate-400 text-sm">No options selected</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={() => router.push("/")}
+              className="w-full btn-primary py-3 px-4"
+            >
+              Start Learning →
             </button>
           </div>
         )}

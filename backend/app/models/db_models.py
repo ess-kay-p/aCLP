@@ -129,3 +129,18 @@ class QuestionHistory(Base):
 
     def __repr__(self):
         return f"<QuestionHistory(id={self.id}, user_id={self.user_id}, session_id={self.session_id})>"
+
+
+class UserProfilingProfile(Base):
+    """Stores resolved profiling and open-text answers for a user/session."""
+
+    __tablename__ = "user_profiling_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, unique=True)
+    session_id = Column(String, nullable=True, unique=True, index=True)
+    profile_data = Column(JSON, nullable=False)  # {question_text: answer_text}
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    def __repr__(self):
+        return f"<UserProfilingProfile(user_id={self.user_id}, session_id={self.session_id})>"
