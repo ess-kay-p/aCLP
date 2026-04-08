@@ -155,18 +155,33 @@ export interface Question {
   question: string;
   options: Array<{
     text: string;
+    image_url?: string;
+    alt_text?: string;
   }>;
+  question_type?: string;
+  allow_multiple?: boolean;
 }
 
 export interface QuestionnaireResponse {
   questions: Question[];
 }
 
-export async function getQuestions(categoryId?: number): Promise<ApiResponse<QuestionnaireResponse>> {
-  const url = categoryId
-    ? `/api/onboarding/questions?category_id=${categoryId}`
-    : "/api/onboarding/questions";
-  return fetchApi<QuestionnaireResponse>(url);
+function buildUrl(base: string, params: Record<string, string | number | undefined>): string {
+  const sp = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined) sp.set(k, String(v));
+  }
+  const qs = sp.toString();
+  return qs ? `${base}?${qs}` : base;
+}
+
+export async function getQuestions(
+  categoryId?: number,
+  questionType?: string
+): Promise<ApiResponse<QuestionnaireResponse>> {
+  return fetchApi<QuestionnaireResponse>(
+    buildUrl("/api/onboarding/questions", { category_id: categoryId, question_type: questionType })
+  );
 }
 
 export async function getStudentProfile(
@@ -198,7 +213,9 @@ export interface StudentProfile {
 export async function submitAnswers(
   sessionId: string,
   answers: Record<number, number>,
-  selectedStyle?: string
+  selectedStyle?: string,
+  profilingAnswers?: Record<number, number[]>,
+  openAnswers?: Record<number, string>
 ): Promise<ApiResponse<StudentProfile>> {
   return fetchApi<StudentProfile>("/api/onboarding/submit", {
     method: "POST",
@@ -206,6 +223,8 @@ export async function submitAnswers(
       session_id: sessionId,
       answers,
       selected_style: selectedStyle,
+      profiling_answers: profilingAnswers,
+      open_answers: openAnswers,
     }),
   });
 }
@@ -378,6 +397,8 @@ export async function deleteCategory(categoryId: number): Promise<ApiResponse<{ 
 export interface QuestionOption {
   text: string;
   dimension_updates: Record<string, number>;
+  image_url?: string;
+  alt_text?: string;
 }
 
 export interface QuestionData {
@@ -385,13 +406,17 @@ export interface QuestionData {
   question: string;
   options: QuestionOption[];
   category_id?: number;
+  question_type?: string;
+  allow_multiple?: boolean;
 }
 
-export async function getQuestionnaire(categoryId?: number): Promise<ApiResponse<{ questions: QuestionData[] }>> {
-  const url = categoryId
-    ? `/api/questionnaire/?category_id=${categoryId}`
-    : "/api/questionnaire/";
-  return fetchApi<{ questions: QuestionData[] }>(url);
+export async function getQuestionnaire(
+  categoryId?: number,
+  questionType?: string
+): Promise<ApiResponse<{ questions: QuestionData[] }>> {
+  return fetchApi<{ questions: QuestionData[] }>(
+    buildUrl("/api/questionnaire/", { category_id: categoryId, question_type: questionType })
+  );
 }
 
 export async function createQuestion(

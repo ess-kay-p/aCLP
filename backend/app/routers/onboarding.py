@@ -28,6 +28,8 @@ class QuestionnaireQuestion(BaseModel):
     id: int
     question: str
     options: List[dict]
+    question_type: Optional[str] = "vector"
+    allow_multiple: Optional[bool] = False
 
 
 class QuestionnaireResponse(BaseModel):
@@ -40,6 +42,8 @@ class OnboardingAnswers(BaseModel):
     session_id: str
     answers: Dict[int, int]  # question_id -> option_index
     selected_style: Optional[str] = None  # Optional style selection from variants
+    profiling_answers: Optional[Dict[int, List[int]]] = None  # question_id -> list of selected option indices (profiling questions)
+    open_answers: Optional[Dict[int, str]] = None  # question_id -> free text answer (open questions)
 
 
 class PersonalizedVariantRequest(BaseModel):
@@ -112,6 +116,7 @@ def load_questionnaire_from_db(db: Session, user: Optional[User] = None) -> List
 @router.get("/questions", response_model=QuestionnaireResponse)
 async def get_questionnaire(
     category_id: Optional[int] = None,
+    question_type: Optional[str] = None,
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
@@ -121,22 +126,25 @@ async def get_questionnaire(
     Query parameters:
     - category_id: If provided, returns category-specific questions.
                    If None, returns general/initial questions (no category).
+    - question_type: Filter by type ("vector", "profiling", or "open"). If None, returns all types.
 
     For authenticated users, returns custom questions if configured, otherwise admin defaults.
     """
     try:
         if category_id:
-            # Get category-specific questions from AdminQuestion
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id == category_id
             ).order_by(AdminQuestion.order).all()
             questions = [q.question_data for q in admin_questions]
         else:
-            # Get general questions (no category)
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id.is_(None)
             ).order_by(AdminQuestion.order).all()
             questions = [q.question_data for q in admin_questions]
+
+        if question_type:
+            types = question_type.split(",")
+            questions = [q for q in questions if q.get("question_type", "vector") in types]
 
         return QuestionnaireResponse(questions=questions)
     except Exception:

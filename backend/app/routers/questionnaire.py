@@ -24,7 +24,9 @@ class QuestionOption(BaseModel):
     """A single option in a question."""
 
     text: str
-    dimension_updates: dict  # e.g., {"narrative": 0.2, "analogy": 0.1}
+    dimension_updates: Optional[dict] = {}  # empty for profiling/open questions
+    image_url: Optional[str] = None
+    alt_text: Optional[str] = None
 
 
 class QuestionData(BaseModel):
@@ -34,6 +36,8 @@ class QuestionData(BaseModel):
     question: str
     options: List[QuestionOption]
     category_id: Optional[int] = None
+    question_type: Optional[str] = "vector"  # "vector" | "profiling" | "open"
+    allow_multiple: Optional[bool] = False
 
 
 class QuestionnaireResponse(BaseModel):
@@ -68,6 +72,7 @@ async def get_optional_user(
 @router.get("/", response_model=QuestionnaireResponse)
 async def get_questionnaire(
     category_id: Optional[int] = None,
+    question_type: Optional[str] = None,
     current_user: Optional[User] = Depends(get_optional_user),
     db: Session = Depends(get_db),
 ):
@@ -76,6 +81,7 @@ async def get_questionnaire(
 
     Query parameters:
     - category_id: Filter by category. If None, returns general questions (category_id IS NULL).
+    - question_type: Filter by type ("vector", "profiling", or "open"). If None, returns all types.
 
     For authenticated users with custom questions, returns their custom questions.
     Otherwise returns admin defaults filtered by category_id.
@@ -90,21 +96,25 @@ async def get_questionnaire(
 
             if user_questions:
                 questions = [q.question_data for q in user_questions]
+                if question_type:
+                    types = question_type.split(",")
+                    questions = [q for q in questions if q.get("question_type", "vector") in types]
                 return QuestionnaireResponse(questions=questions)
 
         # Fall back to admin defaults - filter by category_id
         if category_id:
-            # Get category-specific questions
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id == category_id
             ).order_by(AdminQuestion.order).all()
         else:
-            # Get general questions (no category)
             admin_questions = db.query(AdminQuestion).filter(
                 AdminQuestion.category_id.is_(None)
             ).order_by(AdminQuestion.order).all()
 
         questions = [q.question_data for q in admin_questions]
+        if question_type:
+            types = question_type.split(",")
+            questions = [q for q in questions if q.get("question_type", "vector") in types]
         return QuestionnaireResponse(questions=questions)
     except Exception:
         logger.exception("get questionnaire failed for category_id=%s", category_id)

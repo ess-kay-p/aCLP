@@ -29,7 +29,12 @@ const DIMENSIONS = [
   "simple",
 ];
 
-type AdminTab = "categories" | "general-questions" | "category-questions";
+type AdminTab = "categories" | "general-questions" | "category-questions" | "profiling-questions";
+
+const EMPTY_PROFILING_OPTIONS: QuestionOption[] = [
+  { text: "", dimension_updates: {}, image_url: "", alt_text: "" },
+  { text: "", dimension_updates: {}, image_url: "", alt_text: "" },
+];
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -58,6 +63,14 @@ export default function SettingsPage() {
   ]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
+  // Profiling Questions
+  const [profilingQuestions, setProfilingQuestions] = useState<QuestionData[]>([]);
+  const [isProfilingModalOpen, setIsProfilingModalOpen] = useState(false);
+  const [profilingFormQuestion, setProfilingFormQuestion] = useState("");
+  const [profilingFormOptions, setProfilingFormOptions] = useState<QuestionOption[]>(EMPTY_PROFILING_OPTIONS);
+  const [profilingEditingId, setProfilingEditingId] = useState<number | null>(null);
+  const [profilingSubType, setProfilingSubType] = useState<"profiling" | "open">("profiling");
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -75,6 +88,7 @@ export default function SettingsPage() {
         setIsAdmin(true);
         await loadCategories();
         await loadQuestions(null);
+        await loadProfilingQuestions();
       } else {
         router.push("/");
         return;
@@ -101,6 +115,15 @@ export default function SettingsPage() {
       setQuestions(result.data.questions);
     } else {
       setError(result.error || "Failed to load questions");
+    }
+  };
+
+  const loadProfilingQuestions = async () => {
+    const result = await getQuestionnaire(undefined, "profiling,open");
+    if (result.data) {
+      setProfilingQuestions(result.data.questions);
+    } else {
+      setError(result.error || "Failed to load profiling questions");
     }
   };
 
@@ -236,6 +259,61 @@ export default function SettingsPage() {
     setIsModalOpen(false);
   };
 
+  const resetProfilingModal = () => {
+    setIsProfilingModalOpen(false);
+    setProfilingEditingId(null);
+    setProfilingFormQuestion("");
+    setProfilingFormOptions(EMPTY_PROFILING_OPTIONS);
+    setProfilingSubType("profiling");
+    setError("");
+  };
+
+  const handleDeleteProfilingQuestion = async (id: number) => {
+    if (confirm("Delete this question?")) {
+      const result = await deleteQuestion(id);
+      if (result.error) { setError(result.error); return; }
+      await loadProfilingQuestions();
+    }
+  };
+
+  const handleSaveProfilingQuestion = async () => {
+    if (!profilingFormQuestion.trim()) {
+      setError("Question text is required");
+      return;
+    }
+    if (profilingSubType === "profiling" && profilingFormOptions.some((opt) => !opt.text.trim())) {
+      setError("All options must have text");
+      return;
+    }
+
+    const questionPayload: QuestionData = {
+      id: profilingEditingId || profilingQuestions.length + 1,
+      question: profilingFormQuestion,
+      options: profilingSubType === "open"
+        ? []
+        : profilingFormOptions.map((opt) => ({
+            text: opt.text,
+            dimension_updates: {},
+            image_url: opt.image_url || undefined,
+            alt_text: opt.alt_text || undefined,
+          })),
+      question_type: profilingSubType,
+      allow_multiple: profilingSubType === "profiling",
+    };
+
+    const result = profilingEditingId
+      ? await updateQuestion(profilingEditingId, questionPayload)
+      : await createQuestion(questionPayload);
+
+    if (result.error) {
+      setError(result.error);
+      return;
+    }
+
+    await loadProfilingQuestions();
+    resetProfilingModal();
+  };
+
   const handleLogout = () => {
     clearToken();
     localStorage.removeItem("lexicon_session_id");
@@ -339,6 +417,20 @@ export default function SettingsPage() {
             }`}
           >
             📖 Category Questions
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("profiling-questions");
+              loadProfilingQuestions();
+              setError("");
+            }}
+            className={`px-6 py-3 font-medium border-b-2 transition ${
+              activeTab === "profiling-questions"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            📋 Profiling Questions
           </button>
         </div>
 
@@ -614,6 +706,108 @@ export default function SettingsPage() {
             )}
           </div>
         )}
+        {/* Profiling Questions Tab */}
+        {activeTab === "profiling-questions" && (
+          <div className="space-y-8">
+            <div className="card">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-slate-800">
+                  Profiling Questions ({profilingQuestions.length})
+                </h2>
+                <button
+                  onClick={() => {
+                    resetProfilingModal();
+                    setIsProfilingModalOpen(true);
+                  }}
+                  className="btn-primary py-2 px-6"
+                >
+                  + Add Profiling Question
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {profilingQuestions.map((q, idx) => (
+                  <div
+                    key={q.id}
+                    className="p-4 border border-slate-200 rounded-lg hover:border-indigo-300 transition"
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-slate-500 mb-1">
+                          Question {idx + 1}
+                        </p>
+                        <p className="text-lg font-semibold text-slate-800">{q.question}</p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {q.question_type === "open"
+                            ? "Text input"
+                            : `Multi-select · ${q.options.length} options`}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => {
+                            setProfilingEditingId(q.id);
+                            setProfilingFormQuestion(q.question);
+                            setProfilingSubType(q.question_type === "open" ? "open" : "profiling");
+                            setProfilingFormOptions(
+                              q.options.length > 0
+                                ? q.options.map((o) => ({
+                                    text: o.text,
+                                    dimension_updates: {},
+                                    image_url: o.image_url || "",
+                                    alt_text: o.alt_text || "",
+                                  }))
+                                : EMPTY_PROFILING_OPTIONS
+                            );
+                            setIsProfilingModalOpen(true);
+                          }}
+                          className="px-3 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProfilingQuestion(q.id)}
+                          className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                    {q.question_type === "open" ? (
+                      <div className="pl-4">
+                        <p className="text-xs text-slate-500 italic">Student types a free-text answer</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2 ml-0">
+                        {q.options.map((opt, optIdx) => (
+                          <div key={optIdx} className="flex items-center gap-3 pl-4">
+                            {opt.image_url && (
+                              <img
+                                src={opt.image_url}
+                                alt={opt.alt_text || opt.text}
+                                className="w-10 h-10 object-cover rounded"
+                              />
+                            )}
+                            <p className="text-sm font-medium text-slate-700">• {opt.text}</p>
+                            {opt.alt_text && (
+                              <p className="text-xs text-slate-400">({opt.alt_text})</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {profilingQuestions.length === 0 && (
+                <p className="text-center text-slate-500 py-8">
+                  No profiling questions yet. Create one above!
+                </p>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Category Editor Modal */}
@@ -796,6 +990,192 @@ export default function SettingsPage() {
                 </button>
                 <button
                   onClick={resetForm}
+                  className="flex-1 btn-secondary py-2 px-4"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Profiling Question Editor Modal */}
+      {isProfilingModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">
+          <div className="bg-white rounded-xl shadow-lg p-8 max-w-2xl w-full my-8">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-2xl font-bold text-slate-900">
+                {profilingEditingId ? "Edit Profiling Question" : "Add Profiling Question"}
+              </h2>
+              <button
+                onClick={resetProfilingModal}
+                className="text-slate-400 hover:text-slate-600 text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-6">
+              {/* Sub-type toggle */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Answer Type
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setProfilingSubType("profiling")}
+                    className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition ${
+                      profilingSubType === "profiling"
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    🖼️ Icon Selection
+                  </button>
+                  <button
+                    onClick={() => setProfilingSubType("open")}
+                    className={`flex-1 py-2 px-4 rounded-lg border-2 text-sm font-medium transition ${
+                      profilingSubType === "open"
+                        ? "border-indigo-500 bg-indigo-50 text-indigo-700"
+                        : "border-slate-200 text-slate-600 hover:border-slate-300"
+                    }`}
+                  >
+                    ✏️ Text Input
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Question Text
+                </label>
+                <textarea
+                  value={profilingFormQuestion}
+                  onChange={(e) => setProfilingFormQuestion(e.target.value)}
+                  placeholder="Enter the question"
+                  className="input"
+                  rows={3}
+                />
+              </div>
+
+              {profilingSubType === "open" ? (
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                  <p className="text-sm text-slate-600 font-medium mb-1">Text Input Preview</p>
+                  <div className="w-full border border-slate-300 rounded-lg p-3 bg-white text-slate-400 text-sm italic">
+                    Student types their answer here...
+                  </div>
+                  <p className="text-xs text-slate-500 mt-2">No options to configure for text-input questions.</p>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="text-sm font-medium text-slate-700">
+                      Answer Options
+                    </label>
+                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded">
+                      Multi-select · No vector effect
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {profilingFormOptions.map((option, idx) => (
+                      <div key={idx} className="p-4 border border-slate-200 rounded-lg space-y-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={option.text}
+                            onChange={(e) => {
+                              const updated = [...profilingFormOptions];
+                              updated[idx] = { ...updated[idx], text: e.target.value };
+                              setProfilingFormOptions(updated);
+                            }}
+                            placeholder={`Option ${idx + 1} label`}
+                            className="flex-1 input"
+                          />
+                          {profilingFormOptions.length > 2 && (
+                            <button
+                              onClick={() =>
+                                setProfilingFormOptions(profilingFormOptions.filter((_, i) => i !== idx))
+                              }
+                              className="px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded"
+                            >
+                              Remove
+                            </button>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                              Image URL (optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={option.image_url || ""}
+                              onChange={(e) => {
+                                const updated = [...profilingFormOptions];
+                                updated[idx] = { ...updated[idx], image_url: e.target.value };
+                                setProfilingFormOptions(updated);
+                              }}
+                              placeholder="https://example.com/icon.png"
+                              className="input text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-slate-600 mb-1">
+                              Alt Text (optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={option.alt_text || ""}
+                              onChange={(e) => {
+                                const updated = [...profilingFormOptions];
+                                updated[idx] = { ...updated[idx], alt_text: e.target.value };
+                                setProfilingFormOptions(updated);
+                              }}
+                              placeholder="Describe the image"
+                              className="input text-sm"
+                            />
+                          </div>
+                        </div>
+
+                        {option.image_url && (
+                          <div className="flex items-center gap-3 pt-1">
+                            <img
+                              src={option.image_url}
+                              alt={option.alt_text || option.text}
+                              className="w-12 h-12 object-contain rounded border border-slate-200"
+                            />
+                            <span className="text-xs text-slate-500">Preview</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      setProfilingFormOptions([
+                        ...profilingFormOptions,
+                        { text: "", dimension_updates: {}, image_url: "", alt_text: "" },
+                      ])
+                    }
+                    className="mt-4 text-sm text-indigo-600 hover:text-indigo-700 font-medium"
+                  >
+                    + Add Option
+                  </button>
+                </div>
+              )}
+
+              <div className="flex gap-4 pt-4 border-t border-slate-200">
+                <button
+                  onClick={handleSaveProfilingQuestion}
+                  className="flex-1 btn-primary py-2 px-4"
+                >
+                  {profilingEditingId ? "Update Question" : "Add Question"}
+                </button>
+                <button
+                  onClick={resetProfilingModal}
                   className="flex-1 btn-secondary py-2 px-4"
                 >
                   Cancel

@@ -8,21 +8,19 @@ import {
   getCategories,
   getSessionId,
   Category,
+  Question,
 } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 
-interface Question {
-  id: number;
-  question: string;
-  options: Array<{
-    text: string;
-  }>;
-}
-
-type OnboardingStep = "initial-questions" | "category-selection" | "category-questions" | "loading" | "completing";
+type OnboardingStep = "profiling-questions" | "initial-questions" | "category-selection" | "category-questions" | "loading" | "completing";
 
 export default function OnboardingPage() {
   const router = useRouter();
+
+  const [profilingQuestions, setProfilingQuestions] = useState<Question[]>([]);
+  const [profilingQuestionIndex, setProfilingQuestionIndex] = useState(0);
+  const [profilingAnswers, setProfilingAnswers] = useState<Record<number, number[]>>({});
+  const [openAnswers, setOpenAnswers] = useState<Record<number, string>>({});
 
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
@@ -47,7 +45,12 @@ export default function OnboardingPage() {
   useEffect(() => {
     const loadInitialData = async () => {
       try {
-        const questionsResult = await getQuestions();
+        const [questionsResult, categoriesResult, profilingResult] = await Promise.all([
+          getQuestions(),
+          getCategories(true),
+          getQuestions(undefined, "profiling,open"),
+        ]);
+
         if (questionsResult.error) {
           setError(`Failed to load questions: ${questionsResult.error}`);
           setIsLoading(false);
@@ -57,7 +60,6 @@ export default function OnboardingPage() {
           setQuestions(questionsResult.data.questions);
         }
 
-        const categoriesResult = await getCategories(true);
         if (categoriesResult.error) {
           setError(`Failed to load categories: ${categoriesResult.error}`);
           setIsLoading(false);
@@ -67,7 +69,13 @@ export default function OnboardingPage() {
           setCategories(categoriesResult.data);
         }
 
-        setStep("initial-questions");
+        if (profilingResult.data && profilingResult.data.questions.length > 0) {
+          setProfilingQuestions(profilingResult.data.questions);
+          setStep("profiling-questions");
+        } else {
+          setStep("initial-questions");
+        }
+
         setIsLoading(false);
       } catch (err) {
         setError("Failed to load onboarding data");
@@ -77,6 +85,31 @@ export default function OnboardingPage() {
 
     loadInitialData();
   }, []);
+
+  const handleToggleProfilingOption = (questionId: number, optionIndex: number) => {
+    const current = profilingAnswers[questionId] || [];
+    const alreadySelected = current.includes(optionIndex);
+    setProfilingAnswers({
+      ...profilingAnswers,
+      [questionId]: alreadySelected
+        ? current.filter((i) => i !== optionIndex)
+        : [...current, optionIndex],
+    });
+  };
+
+  const handleContinueProfilingQuestion = () => {
+    const currentQ = profilingQuestions[profilingQuestionIndex];
+    if (currentQ.question_type === "open" && !openAnswers[currentQ.id]?.trim()) {
+      setError("Please enter an answer before continuing.");
+      return;
+    }
+    setError("");
+    if (profilingQuestionIndex < profilingQuestions.length - 1) {
+      setProfilingQuestionIndex(profilingQuestionIndex + 1);
+    } else {
+      setStep("initial-questions");
+    }
+  };
 
   const handleSelectInitialOption = async (optionIndex: number) => {
     const currentQuestion = questions[currentQuestionIndex];
@@ -145,7 +178,7 @@ export default function OnboardingPage() {
       const sessionId = getSessionId();
       const allAnswers = { ...answers, ...finalCategoryAnswers };
 
-      const profileResult = await submitAnswers(sessionId, allAnswers);
+      const profileResult = await submitAnswers(sessionId, allAnswers, undefined, profilingAnswers, openAnswers);
       if (profileResult.error) {
         setError(`Error creating profile: ${profileResult.error}`);
         setIsLoading(false);
@@ -164,8 +197,13 @@ export default function OnboardingPage() {
   };
 
   const handleBack = () => {
-    if (step === "initial-questions" && currentQuestionIndex > 0) {
+    if (step === "profiling-questions" && profilingQuestionIndex > 0) {
+      setProfilingQuestionIndex(profilingQuestionIndex - 1);
+    } else if (step === "initial-questions" && currentQuestionIndex > 0) {
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+    } else if (step === "initial-questions" && profilingQuestions.length > 0) {
+      setStep("profiling-questions");
+      setProfilingQuestionIndex(profilingQuestions.length - 1);
     } else if (step === "category-selection") {
       setStep("initial-questions");
       setCurrentQuestionIndex(questions.length - 1);
@@ -200,7 +238,7 @@ export default function OnboardingPage() {
     );
   }
 
-  if (questions.length === 0 && step !== "category-selection") {
+  if (questions.length === 0 && step !== "category-selection" && step !== "profiling-questions") {
     return (
       <div className="container">
         <header className="text-center mb-12 pt-8">
@@ -237,6 +275,99 @@ export default function OnboardingPage() {
         {error && (
           <div className="mb-6 p-4 bg-red-50 border border-red-300 text-red-700 rounded-lg text-sm">
             {error}
+          </div>
+        )}
+
+        {/* STEP 0: Profiling Questions (icon multi-select or text input) */}
+        {step === "profiling-questions" && !isLoading && (
+          <div>
+            <div className="mb-8">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-sm font-medium text-slate-600">
+                  Question {profilingQuestionIndex + 1} of {profilingQuestions.length}
+                </span>
+                <span className="text-sm font-medium text-slate-600">
+                  {Math.round(((profilingQuestionIndex + 1) / profilingQuestions.length) * 100)}%
+                </span>
+              </div>
+              <div className="w-full bg-slate-200 rounded-full h-2">
+                <div
+                  className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${((profilingQuestionIndex + 1) / profilingQuestions.length) * 100}%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <h2 className="text-2xl font-bold text-slate-900 mb-2">
+              {profilingQuestions[profilingQuestionIndex].question}
+            </h2>
+
+            {profilingQuestions[profilingQuestionIndex].question_type === "open" ? (
+              <>
+                <p className="text-sm text-slate-500 mb-4">Type your answer below</p>
+                <textarea
+                  value={openAnswers[profilingQuestions[profilingQuestionIndex].id] || ""}
+                  onChange={(e) => {
+                    setError("");
+                    setOpenAnswers({
+                      ...openAnswers,
+                      [profilingQuestions[profilingQuestionIndex].id]: e.target.value,
+                    });
+                  }}
+                  placeholder="Your answer..."
+                  className="w-full input mb-6 resize-none"
+                  rows={4}
+                />
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-slate-500 mb-6">Select all that apply</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
+                  {profilingQuestions[profilingQuestionIndex].options.map((option, index) => {
+                    const qId = profilingQuestions[profilingQuestionIndex].id;
+                    const isSelected = (profilingAnswers[qId] || []).includes(index);
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => handleToggleProfilingOption(qId, index)}
+                        className={`p-4 border-2 rounded-xl flex flex-col items-center gap-2 transition-all text-center ${
+                          isSelected
+                            ? "border-indigo-500 bg-indigo-50"
+                            : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        {option.image_url && (
+                          <img
+                            src={option.image_url}
+                            alt={option.alt_text || option.text}
+                            className="w-12 h-12 object-contain"
+                          />
+                        )}
+                        <span className="text-sm font-medium text-slate-900">{option.text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </>
+            )}
+
+            <button
+              onClick={handleContinueProfilingQuestion}
+              className="w-full btn-primary py-3 px-4 mb-3"
+            >
+              Continue →
+            </button>
+
+            {profilingQuestionIndex > 0 && (
+              <button
+                onClick={handleBack}
+                className="w-full btn-secondary py-2 px-4"
+              >
+                ← Back
+              </button>
+            )}
           </div>
         )}
 
@@ -277,7 +408,7 @@ export default function OnboardingPage() {
               ))}
             </div>
 
-            {currentQuestionIndex > 0 && (
+            {(currentQuestionIndex > 0 || profilingQuestions.length > 0) && (
               <button
                 onClick={handleBack}
                 className="w-full btn-secondary py-2 px-4"
