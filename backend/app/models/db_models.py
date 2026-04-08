@@ -38,6 +38,7 @@ class User(Base):
     # Relationships
     user_vector = relationship("UserVector", back_populates="user", uselist=False, cascade="all, delete-orphan")
     user_questions = relationship("UserQuestion", back_populates="user", cascade="all, delete-orphan")
+    question_history = relationship("QuestionHistory", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"
@@ -109,3 +110,22 @@ class AdminQuestion(Base):
 
     def __repr__(self):
         return f"<AdminQuestion(category_id={self.category_id}, order={self.order})>"
+
+
+class QuestionHistory(Base):
+    """Records of past Ask-a-Question interactions."""
+
+    __tablename__ = "question_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    session_id = Column(String, nullable=True, index=True)
+    topic = Column(String, nullable=False)
+    explanation = Column(String, nullable=False)
+    style = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="question_history")
+
+    def __repr__(self):
+        return f"<QuestionHistory(id={self.id}, user_id={self.user_id}, session_id={self.session_id})>"

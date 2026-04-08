@@ -2,9 +2,10 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId } from "@/lib/api";
+import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId, HistoryItem } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
 import LearnerProfileChart from "@/components/LearnerProfileChart";
+import HistorySidebar from "@/components/HistorySidebar";
 import { Category } from "@/lib/api";
 
 export default function Home() {
@@ -27,6 +28,8 @@ export default function Home() {
   const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false);
   const [explanationError, setExplanationError] = useState("");
   const [isProfileExpanded, setIsProfileExpanded] = useState(true);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
 
   useEffect(() => {
     setIsMounted(true);
@@ -130,6 +133,7 @@ export default function Home() {
       if (result.data) {
         setExplanation(result.data);
         setQuestion("");
+        setHistoryRefreshTick((t) => t + 1);
       }
 
       setIsGeneratingExplanation(false);
@@ -144,10 +148,16 @@ export default function Home() {
     setExplanationError("");
   };
 
+  const handleSelectHistoryItem = (item: HistoryItem) => {
+    setExplanation({ topic: item.topic, explanation: item.explanation, style: item.style });
+    setIsHistoryOpen(false);
+  };
+
   const wrapperClassName = isGeneratingExplanation ? "pointer-events-none opacity-50" : "";
 
   return (
-    <div className={wrapperClassName}>
+    <div className={`flex min-h-screen ${wrapperClassName}`}>
+      <div className={`flex-1 transition-all duration-300 ${isHistoryOpen ? "mr-72" : ""}`}>
       <div className="container">
         <header className="mb-12 pt-8 border-b border-slate-200 pb-8">
           <div className="flex justify-between items-center">
@@ -155,23 +165,27 @@ export default function Home() {
               <h1 className="text-4xl font-bold text-slate-900">📚 Lexicon</h1>
               <p className="text-slate-600 mt-1">Explanations tailored to your learning style</p>
             </div>
-            {isMounted && (
-              isAuthenticated() ? (
+            <div className="flex items-center gap-3">
+              {hasProfile && (
                 <button
-                  onClick={handleLogout}
+                  onClick={() => setIsHistoryOpen((o) => !o)}
                   className="btn-secondary"
                 >
-                  Sign Out
+                  🕐 History
                 </button>
-              ) : (
-                <button
-                  onClick={() => router.push("/login")}
-                  className="btn-secondary"
-                >
-                  Sign In
-                </button>
-              )
-            )}
+              )}
+              {isMounted && (
+                isAuthenticated() ? (
+                  <button onClick={handleLogout} className="btn-secondary">
+                    Sign Out
+                  </button>
+                ) : (
+                  <button onClick={() => router.push("/login")} className="btn-secondary">
+                    Sign In
+                  </button>
+                )
+              )}
+            </div>
           </div>
         </header>
 
@@ -349,6 +363,16 @@ export default function Home() {
           </div>
         ) : null}
       </div>
+      </div>
+      {hasProfile && (
+        <HistorySidebar
+          isOpen={isHistoryOpen}
+          onToggle={() => setIsHistoryOpen((o) => !o)}
+          onSelectItem={handleSelectHistoryItem}
+          sessionId={getSessionId()}
+          refreshTick={historyRefreshTick}
+        />
+      )}
     </div>
   );
 }

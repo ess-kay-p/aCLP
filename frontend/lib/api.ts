@@ -455,6 +455,32 @@ export async function resetQuestionnaire(): Promise<ApiResponse<{ status: string
   });
 }
 
+// History API
+export interface HistoryItem {
+  id: number;
+  topic: string;
+  explanation: string;
+  style: string;
+  created_at: string;
+}
+
+export async function getHistory(sessionId?: string): Promise<ApiResponse<HistoryItem[]>> {
+  const url = sessionId
+    ? `/api/history?session_id=${encodeURIComponent(sessionId)}`
+    : "/api/history";
+  return fetchApi<HistoryItem[]>(url);
+}
+
+export async function deleteHistoryItem(
+  itemId: number,
+  sessionId?: string
+): Promise<ApiResponse<{ status: string }>> {
+  const url = sessionId
+    ? `/api/history/${itemId}?session_id=${encodeURIComponent(sessionId)}`
+    : `/api/history/${itemId}`;
+  return fetchApi<{ status: string }>(url, { method: "DELETE" });
+}
+
 // Health check
 export async function healthCheck(): Promise<ApiResponse<{ status: string }>> {
   return fetchApi<{ status: string }>("/api/health");
