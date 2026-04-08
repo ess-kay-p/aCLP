@@ -20,7 +20,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Import routers
-from .routers import onboarding, explain, feedback, auth, questionnaire, categories
+from .routers import onboarding, explain, feedback, auth, questionnaire, categories, history
 from .database import create_tables, seed_admin_questions, SessionLocal
 from .models.db_models import User
 from .services.auth_service import hash_password
@@ -94,6 +94,7 @@ app.include_router(questionnaire.router)
 app.include_router(onboarding.router)
 app.include_router(explain.router)
 app.include_router(feedback.router)
+app.include_router(history.router)
 
 
 @app.get("/api/health")

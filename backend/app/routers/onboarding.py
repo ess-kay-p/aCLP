@@ -12,7 +12,7 @@ from ..models import StudentProfile
 from ..services.vector_ops import create_zero_vector, VECTOR_MAX, create_style_vector
 from ..services.llm import generate_explanation_variants
 from ..database import get_db
-from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector
+from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector, QuestionHistory
 from ..services.auth_service import decode_token
 from pydantic import BaseModel
 from sqlalchemy import and_
@@ -415,6 +415,17 @@ async def generate_personalized_explanation(
             best_style = list(variants.keys())[0]
 
         best_explanation = variants[best_style]
+
+        # Persist to history
+        history_entry = QuestionHistory(
+            user_id=current_user.id if current_user else None,
+            session_id=request.session_id if not current_user else None,
+            topic=request.topic,
+            explanation=best_explanation,
+            style=best_style,
+        )
+        db.add(history_entry)
+        db.commit()
 
         return PersonalizedExplanationResponse(
             topic=request.topic,
