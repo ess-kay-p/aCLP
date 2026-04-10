@@ -219,8 +219,17 @@ export default function LeftSidebar({
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     setArrowTop(rect.top + rect.height / 2);
     setActivePanel(type);
+    // If summary hasn't loaded yet, retry on open
+    if (type === "style" && !richSummary && !summaryLoading) {
+      setSummaryLoading(true);
+      getPersonalizationSummary(sessionId).then((res) => {
+        if (res.data?.summary) setRichSummary(res.data.summary);
+        setSummaryLoading(false);
+      });
+    }
   };
 
+  // Re-fetch history whenever a new explanation is generated (refreshTick) or session changes
   useEffect(() => {
     const fetchHistory = async () => {
       setHistoryLoading(true);
@@ -228,13 +237,17 @@ export default function LeftSidebar({
       if (res.data) setItems(res.data);
       setHistoryLoading(false);
     };
+    fetchHistory();
+  }, [refreshTick, sessionId]);
+
+  // Fetch summary once when profile is ready; re-fetch if session changes
+  useEffect(() => {
     const fetchSummary = async () => {
       setSummaryLoading(true);
       const res = await getPersonalizationSummary(sessionId);
       if (res.data?.summary) setRichSummary(res.data.summary);
       setSummaryLoading(false);
     };
-    fetchHistory();
     fetchSummary();
   }, [sessionId]);
 
