@@ -188,7 +188,7 @@ def generate_personalization_summary(
         response = litellm.completion(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.7,
+            temperature=1,
             max_tokens=600,
             **_llm_kwargs(),
         )
@@ -289,7 +289,7 @@ def generate_diagram_svg(topic: str, labels: Optional[List[str]] = None) -> Opti
         response = litellm.completion(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
+            temperature=1,
             **_llm_kwargs(),
         )
         content = response.choices[0].message.content.strip()
