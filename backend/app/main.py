@@ -32,6 +32,18 @@ async def lifespan(app: FastAPI):
     create_tables()
     seed_admin_questions()
 
+    # Auto-migrate: add columns that may be missing on older deployed databases
+    from .database import engine
+    from sqlalchemy import text
+    with engine.connect() as conn:
+        for col, typ in [("image_url", "VARCHAR"), ("diagram_svg", "TEXT")]:
+            try:
+                conn.execute(text(f"ALTER TABLE question_history ADD COLUMN {col} {typ}"))
+                conn.commit()
+                logger.info("Migration: added column %s to question_history", col)
+            except Exception:
+                pass  # column already exists
+
     # Seed admin user if it doesn't exist
     db = SessionLocal()
     try:
