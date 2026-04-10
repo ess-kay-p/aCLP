@@ -257,7 +257,6 @@ export interface PersonalizedExplanation {
   explanation: string;
   style: string;
   image_url?: string;
-  diagram_svg?: string;
 }
 
 export async function generatePersonalizedExplanation(
@@ -480,7 +479,6 @@ export interface HistoryItem {
   explanation: string;
   style: string;
   image_url?: string;
-  diagram_svg?: string;
   created_at: string;
 }
 

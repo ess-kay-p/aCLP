@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..models import StudentProfile
 from ..services.vector_ops import create_zero_vector, VECTOR_MAX, create_style_vector
-from ..services.llm import generate_explanation_variants, generate_visual_image, generate_single_explanation, generate_diagram_svg
+from ..services.llm import generate_explanation_variants, generate_visual_image, generate_single_explanation
 from ..database import get_db
 from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector, QuestionHistory, UserProfilingProfile
 from ..services.auth_service import decode_token
@@ -66,7 +66,6 @@ class PersonalizedExplanationResponse(BaseModel):
     explanation: str
     style: str
     image_url: Optional[str] = None
-    diagram_svg: Optional[str] = None
 
 
 async def get_optional_user(
@@ -525,22 +524,17 @@ async def generate_personalized_explanation(
             ),
         )
 
-        # 3. For visual style, parse labels then generate SVG + image in parallel
+        # 3. For visual style, parse labels and generate image
         image_url = None
-        diagram_svg = None
         if best_style == "visual":
             import re
             diagram_match = re.search(r"\[DIAGRAM(?::\s*([^\]]+))?\]", best_explanation)
             labels = None
             if diagram_match and diagram_match.group(1):
                 labels = [l.strip() for l in diagram_match.group(1).split(",") if l.strip()]
-            svg_future = loop.run_in_executor(
-                None, lambda: generate_diagram_svg(request.topic, labels)
-            )
-            img_future = loop.run_in_executor(
+            image_url = await loop.run_in_executor(
                 None, lambda: generate_visual_image(request.topic, labels)
             )
-            diagram_svg, image_url = await asyncio.gather(svg_future, img_future)
 
         # Persist to history
         history_entry = QuestionHistory(
@@ -550,7 +544,6 @@ async def generate_personalized_explanation(
             explanation=best_explanation,
             style=best_style,
             image_url=image_url,
-            diagram_svg=diagram_svg,
         )
         db.add(history_entry)
         db.commit()
@@ -560,7 +553,6 @@ async def generate_personalized_explanation(
             explanation=best_explanation,
             style=best_style,
             image_url=image_url,
-            diagram_svg=diagram_svg,
         )
     except Exception as e:
         logger.exception("Error generating explanation for topic '%s'", request.topic)

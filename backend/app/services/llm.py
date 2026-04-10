@@ -263,55 +263,6 @@ def generate_single_explanation(
     return response.choices[0].message.content.strip()
 
 
-def generate_diagram_svg(topic: str, labels: Optional[List[str]] = None) -> Optional[str]:
-    """
-    Ask the LLM to generate a clean, labeled SVG diagram for the topic.
-    Returns raw SVG string or None on failure.
-    """
-    label_str = ", ".join(labels) if labels else "key components"
-    prompt = (
-        f"Generate a clean, readable educational SVG diagram for: '{topic}'.\n"
-        f"Label these specific parts: {label_str}.\n\n"
-        "STRICT layout rules — follow all of them:\n"
-        "1. Output ONLY raw SVG, no markdown fences, no explanation text\n"
-        "2. viewBox='0 0 700 450', width='700', height='450'\n"
-        "3. White background: <rect width='700' height='450' fill='white'/>\n"
-        "4. Place diagram shapes in the CENTER of the canvas with 60px padding on all sides\n"
-        "5. Place ALL text labels OUTSIDE the shapes they describe — either above, below, or to the side, never on top of lines or arrows\n"
-        "6. Arrows must be SHORT (under 80px), start at the edge of a shape, and end at a label — never cross another label or shape\n"
-        "7. Leave at least 30px gap between any two text labels so they never overlap\n"
-        "8. Use font-size='13' font-family='Arial, sans-serif' for all labels\n"
-        "9. Use only 2-3 fill colors (soft pastels like #d0e8ff, #ffe8cc, #d0ffd8) plus black strokes\n"
-        "10. Define one arrowhead marker at the top: <defs><marker id='arrow' markerWidth='8' markerHeight='8' refX='6' refY='3' orient='auto'><path d='M0,0 L0,6 L8,3 z' fill='#555'/></marker></defs>\n"
-        "11. All arrow lines use marker-end='url(#arrow)' stroke='#555' stroke-width='1.5'\n"
-        "12. No <script>, no event handlers, no foreignObject\n"
-        "13. Think carefully about layout before generating — shapes and labels must be spread out so nothing overlaps\n"
-    )
-
-    try:
-        response = litellm.completion(
-            model=MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            temperature=1,
-            **_llm_kwargs(),
-        )
-        content = response.choices[0].message.content.strip()
-        # Strip markdown code fences if present
-        if content.startswith("```"):
-            lines = content.split("\n")
-            content = "\n".join(lines[1:])
-            if content.endswith("```"):
-                content = content[: content.rfind("```")]
-        content = content.strip()
-        if not content.startswith("<svg"):
-            return None
-        return content
-    except Exception as e:
-        import logging
-        logging.getLogger(__name__).warning("SVG diagram generation failed: %s", e)
-        return None
-
-
 def generate_visual_image(topic: str, labels: Optional[List[str]] = None) -> Optional[str]:
     """
     Generate a labeled textbook diagram for a topic using an image model.

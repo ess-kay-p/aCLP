@@ -26,7 +26,6 @@ export default function Home() {
     explanation: string;
     style: string;
     image_url?: string;
-    diagram_svg?: string;
   } | null>(null);
   const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false);
   const [explanationError, setExplanationError] = useState("");
@@ -150,7 +149,7 @@ export default function Home() {
   };
 
   const handleSelectHistoryItem = (item: HistoryItem) => {
-    setExplanation({ topic: item.topic, explanation: item.explanation, style: item.style, image_url: item.image_url, diagram_svg: item.diagram_svg });
+    setExplanation({ topic: item.topic, explanation: item.explanation, style: item.style, image_url: item.image_url });
   };
 
   const wrapperClassName = isGeneratingExplanation ? "pointer-events-none opacity-50" : "";
@@ -300,22 +299,11 @@ export default function Home() {
                         const before = parts[0] ?? "";
                         const after = parts[1] ?? "";
 
-                        const diagramEl = explanation.diagram_svg ? (
-                          <div className="border-t border-b border-slate-200 bg-white p-4">
-                            <div
-                              className="w-full overflow-auto"
-                              dangerouslySetInnerHTML={{
-                                __html: explanation.diagram_svg
-                                  .replace(/<script[\s\S]*?<\/script>/gi, "")
-                                  .replace(/\son\w+="[^"]*"/gi, ""),
-                              }}
-                            />
-                          </div>
-                        ) : explanation.image_url ? (
+                        const imageEl = explanation.image_url ? (
                           <div className="border-t border-b border-slate-200 bg-white p-4">
                             <img
                               src={explanation.image_url}
-                              alt={`Diagram for ${explanation.topic}`}
+                              alt={`Visual illustration of ${explanation.topic}`}
                               className="w-full h-auto object-contain"
                             />
                           </div>
@@ -328,7 +316,7 @@ export default function Home() {
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{before.trim()}</ReactMarkdown>
                               </div>
                             )}
-                            {diagramEl}
+                            {imageEl}
                             {after.trim() && (
                               <div className="p-6 prose prose-sm prose-slate max-w-none">
                                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{after.trim()}</ReactMarkdown>
