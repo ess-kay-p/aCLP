@@ -350,20 +350,20 @@ export default function LeftSidebar({
         </div>
 
         {/* Retake Test */}
-        <div className="px-4 py-4 border-t border-slate-100 flex-shrink-0">
+        <div className="px-4 py-4 border-t border-slate-200 flex-shrink-0">
           {retakeConfirm ? (
-            <div className="space-y-2">
-              <p className="text-xs text-slate-600">Reset your profile and retake the test?</p>
+            <div className="space-y-2.5">
+              <p className="text-xs text-slate-600 font-medium">Reset your profile and retake the test?</p>
               <div className="flex gap-2">
                 <button
                   onClick={onResetProfile}
-                  className="flex-1 text-xs py-1.5 px-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition font-medium"
+                  className="flex-1 text-xs py-2 px-3 bg-red-500 text-white rounded-lg hover:bg-red-600 active:bg-red-700 transition font-semibold shadow-sm"
                 >
                   Yes, reset
                 </button>
                 <button
                   onClick={() => setRetakeConfirm(false)}
-                  className="flex-1 text-xs py-1.5 px-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition"
+                  className="flex-1 text-xs py-2 px-3 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition font-medium"
                 >
                   Cancel
                 </button>
@@ -372,7 +372,7 @@ export default function LeftSidebar({
           ) : (
             <button
               onClick={() => setRetakeConfirm(true)}
-              className="w-full text-left flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-slate-500 hover:bg-red-50 hover:text-red-600 transition"
+              className="w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 bg-red-50 border border-red-200 hover:bg-red-100 hover:border-red-300 active:bg-red-200 transition shadow-sm"
             >
               <span className="text-base">↺</span>
               <span>Retake Test</span>
