@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { getStudentProfile, resetUserProfile, getCurrentUser, getCategories, generatePersonalizedExplanation, getSessionId, HistoryItem } from "@/lib/api";
 import { isAuthenticated, clearToken } from "@/lib/auth";
-import LearnerProfileChart from "@/components/LearnerProfileChart";
-import HistorySidebar from "@/components/HistorySidebar";
+import LeftSidebar from "@/components/LeftSidebar";
 import { Category } from "@/lib/api";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 export default function Home() {
   const router = useRouter();
@@ -24,11 +25,11 @@ export default function Home() {
     topic: string;
     explanation: string;
     style: string;
+    image_url?: string;
+    diagram_svg?: string;
   } | null>(null);
   const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false);
   const [explanationError, setExplanationError] = useState("");
-  const [isProfileExpanded, setIsProfileExpanded] = useState(true);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [historyRefreshTick, setHistoryRefreshTick] = useState(0);
 
   useEffect(() => {
@@ -149,44 +150,36 @@ export default function Home() {
   };
 
   const handleSelectHistoryItem = (item: HistoryItem) => {
-    setExplanation({ topic: item.topic, explanation: item.explanation, style: item.style });
-    setIsHistoryOpen(false);
+    setExplanation({ topic: item.topic, explanation: item.explanation, style: item.style, image_url: item.image_url, diagram_svg: item.diagram_svg });
   };
 
   const wrapperClassName = isGeneratingExplanation ? "pointer-events-none opacity-50" : "";
 
   return (
     <div className={`flex min-h-screen ${wrapperClassName}`}>
-      <div className={`flex-1 transition-all duration-300 ${isHistoryOpen ? "mr-72" : ""}`}>
+      {hasProfile && (
+        <LeftSidebar
+          profileVector={profileVector}
+          sessionId={getSessionId()}
+          refreshTick={historyRefreshTick}
+          onResetProfile={handleResetProfile}
+          onSelectHistoryItem={handleSelectHistoryItem}
+        />
+      )}
+      <div className={`flex-1 ${hasProfile ? "ml-64" : ""}`}>
       <div className="container">
-        <header className="mb-12 pt-8 border-b border-slate-200 pb-8">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-4xl font-bold text-slate-900">📚 Lexicon</h1>
-              <p className="text-slate-600 mt-1">Explanations tailored to your learning style</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {hasProfile && (
-                <button
-                  onClick={() => setIsHistoryOpen((o) => !o)}
-                  className="btn-secondary"
-                >
-                  🕐 History
-                </button>
-              )}
-              {isMounted && (
-                isAuthenticated() ? (
-                  <button onClick={handleLogout} className="btn-secondary">
-                    Sign Out
-                  </button>
-                ) : (
-                  <button onClick={() => router.push("/login")} className="btn-secondary">
-                    Sign In
-                  </button>
-                )
-              )}
-            </div>
-          </div>
+        <header className="mb-8 pt-6 flex justify-end">
+          {isMounted && (
+            isAuthenticated() ? (
+              <button onClick={handleLogout} className="btn-secondary">
+                Sign Out
+              </button>
+            ) : (
+              <button onClick={() => router.push("/login")} className="btn-secondary">
+                Sign In
+              </button>
+            )
+          )}
         </header>
 
         {isLoading ? (
@@ -200,23 +193,6 @@ export default function Home() {
           </div>
         ) : hasProfile ? (
           <div className="space-y-8">
-            {profileVector.length > 0 && (
-              <div className="card">
-                <div className="flex justify-between items-center mb-6">
-                  <h2 className="text-2xl font-bold text-slate-900">Your Learning Profile</h2>
-                  <button
-                    onClick={() => setIsProfileExpanded(!isProfileExpanded)}
-                    className="text-slate-600 hover:text-slate-900 transition"
-                  >
-                    <span className={`inline-block transition ${isProfileExpanded ? "rotate-180" : ""}`}>
-                      ▼
-                    </span>
-                  </button>
-                </div>
-                {isProfileExpanded && <LearnerProfileChart vector={profileVector} />}
-              </div>
-            )}
-
             {!explanation && !isGeneratingExplanation && (
               <div className="card">
                 <div className="flex items-center gap-2 mb-2">
@@ -315,8 +291,52 @@ export default function Home() {
 
                   <div>
                     <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Explanation</p>
-                    <div className="p-6 bg-slate-50 rounded-lg border border-slate-200 text-slate-700 leading-relaxed whitespace-pre-wrap text-sm">
-                      {explanation.explanation}
+                    <div className="bg-slate-50 rounded-lg border border-slate-200 overflow-hidden">
+                      {(() => {
+                        const hasDiagramToken = /\[DIAGRAM[^\]]*\]/.test(explanation.explanation);
+                        const parts = hasDiagramToken
+                          ? explanation.explanation.split(/\[DIAGRAM[^\]]*\]/)
+                          : [explanation.explanation];
+                        const before = parts[0] ?? "";
+                        const after = parts[1] ?? "";
+
+                        const diagramEl = explanation.diagram_svg ? (
+                          <div className="border-t border-b border-slate-200 bg-white p-4">
+                            <div
+                              className="w-full overflow-auto"
+                              dangerouslySetInnerHTML={{
+                                __html: explanation.diagram_svg
+                                  .replace(/<script[\s\S]*?<\/script>/gi, "")
+                                  .replace(/\son\w+="[^"]*"/gi, ""),
+                              }}
+                            />
+                          </div>
+                        ) : explanation.image_url ? (
+                          <div className="border-t border-b border-slate-200 bg-white p-4">
+                            <img
+                              src={explanation.image_url}
+                              alt={`Diagram for ${explanation.topic}`}
+                              className="w-full h-auto object-contain"
+                            />
+                          </div>
+                        ) : null;
+
+                        return (
+                          <>
+                            {before.trim() && (
+                              <div className="p-6 prose prose-sm prose-slate max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{before.trim()}</ReactMarkdown>
+                              </div>
+                            )}
+                            {diagramEl}
+                            {after.trim() && (
+                              <div className="p-6 prose prose-sm prose-slate max-w-none">
+                                <ReactMarkdown remarkPlugins={[remarkGfm]}>{after.trim()}</ReactMarkdown>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -330,14 +350,6 @@ export default function Home() {
               </div>
             )}
 
-            <div className="text-center pb-8">
-              <button
-                onClick={handleResetProfile}
-                className="btn-secondary"
-              >
-                Reset Profile
-              </button>
-            </div>
           </div>
         ) : isMounted && isAuthenticated() ? (
           <div className="max-w-2xl mx-auto card text-center py-12">
@@ -364,15 +376,6 @@ export default function Home() {
         ) : null}
       </div>
       </div>
-      {hasProfile && (
-        <HistorySidebar
-          isOpen={isHistoryOpen}
-          onToggle={() => setIsHistoryOpen((o) => !o)}
-          onSelectItem={handleSelectHistoryItem}
-          sessionId={getSessionId()}
-          refreshTick={historyRefreshTick}
-        />
-      )}
     </div>
   );
 }

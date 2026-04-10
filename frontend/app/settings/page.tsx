@@ -13,10 +13,16 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  adminListUsers,
+  adminGetUserProfile,
+  adminGetUserProfilingAnswers,
+  adminGetUserPersonalizationSummary,
   Category,
   QuestionData,
   QuestionOption,
+  AdminUser,
 } from "@/lib/api";
+import LearnerProfileChart from "@/components/LearnerProfileChart";
 
 const DIMENSIONS = [
   "sports",
@@ -29,7 +35,7 @@ const DIMENSIONS = [
   "simple",
 ];
 
-type AdminTab = "categories" | "general-questions" | "category-questions" | "profiling-questions";
+type AdminTab = "categories" | "general-questions" | "category-questions" | "profiling-questions" | "users";
 
 const EMPTY_PROFILING_OPTIONS: QuestionOption[] = [
   { text: "", dimension_updates: {}, image_url: "", alt_text: "" },
@@ -70,6 +76,41 @@ export default function SettingsPage() {
   const [profilingFormOptions, setProfilingFormOptions] = useState<QuestionOption[]>(EMPTY_PROFILING_OPTIONS);
   const [profilingEditingId, setProfilingEditingId] = useState<number | null>(null);
   const [profilingSubType, setProfilingSubType] = useState<"profiling" | "open">("profiling");
+
+  // Users
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
+  const [userVector, setUserVector] = useState<number[]>([]);
+  const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
+  const [userSummary, setUserSummary] = useState("");
+  const [userDetailLoading, setUserDetailLoading] = useState(false);
+  const [userDetailTab, setUserDetailTab] = useState<"style" | "profiling" | "graph">("style");
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    const res = await adminListUsers();
+    if (res.data) setUsers(res.data);
+    setUsersLoading(false);
+  };
+
+  const handleSelectUser = async (user: AdminUser) => {
+    setSelectedUser(user);
+    setUserVector([]);
+    setUserAnswers({});
+    setUserSummary("");
+    setUserDetailTab("style");
+    setUserDetailLoading(true);
+    const [profileRes, answersRes, summaryRes] = await Promise.all([
+      adminGetUserProfile(user.id),
+      adminGetUserProfilingAnswers(user.id),
+      adminGetUserPersonalizationSummary(user.id),
+    ]);
+    if (profileRes.data) setUserVector(profileRes.data.vector);
+    if (answersRes.data) setUserAnswers(answersRes.data.answers);
+    if (summaryRes.data) setUserSummary(summaryRes.data.summary);
+    setUserDetailLoading(false);
+  };
 
   useEffect(() => {
     setIsMounted(true);
@@ -431,6 +472,21 @@ export default function SettingsPage() {
             }`}
           >
             📋 Profiling Questions
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab("users");
+              setSelectedUser(null);
+              loadUsers();
+              setError("");
+            }}
+            className={`px-6 py-3 font-medium border-b-2 transition ${
+              activeTab === "users"
+                ? "border-indigo-600 text-indigo-600"
+                : "border-transparent text-slate-600 hover:text-slate-900"
+            }`}
+          >
+            👥 Users
           </button>
         </div>
 
@@ -999,6 +1055,165 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
+      {/* Users Tab */}
+      {activeTab === "users" && (
+        <div className="flex gap-6 h-full">
+          {/* User List */}
+          <div className="w-80 flex-shrink-0">
+            <div className="card">
+              <h2 className="text-xl font-bold text-slate-900 mb-4">All Users</h2>
+              {usersLoading ? (
+                <div className="space-y-3 animate-pulse">
+                  {[0,1,2].map(i => <div key={i} className="h-12 bg-slate-100 rounded-lg" />)}
+                </div>
+              ) : users.length === 0 ? (
+                <p className="text-slate-400 text-sm">No users found.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {users.map(u => (
+                    <li key={u.id}>
+                      <button
+                        onClick={() => handleSelectUser(u)}
+                        className={`w-full text-left px-4 py-3 rounded-lg border transition ${
+                          selectedUser?.id === u.id
+                            ? "border-indigo-400 bg-indigo-50"
+                            : "border-slate-200 hover:border-indigo-300 hover:bg-slate-50"
+                        }`}
+                      >
+                        <p className="text-sm font-medium text-slate-800 truncate">{u.email}</p>
+                        <div className="flex gap-2 mt-1">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${u.has_vector ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
+                            {u.has_vector ? "✓ Profile" : "No profile"}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${u.has_profile ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-400"}`}>
+                            {u.has_profile ? "✓ Answers" : "No answers"}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 mt-1">
+                          Joined {new Date(u.created_at).toLocaleDateString()}
+                        </p>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          {/* User Detail */}
+          <div className="flex-1 min-w-0">
+            {!selectedUser ? (
+              <div className="card flex items-center justify-center h-48 text-slate-400">
+                <p className="text-sm">Select a user to view their learning profile</p>
+              </div>
+            ) : userDetailLoading ? (
+              <div className="space-y-4">
+                {[0,1,2].map(i => (
+                  <div key={i} className="card animate-pulse space-y-3">
+                    <div className="h-5 bg-slate-200 rounded w-1/3" />
+                    <div className="h-3 bg-slate-100 rounded w-full" />
+                    <div className="h-3 bg-slate-100 rounded w-5/6" />
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="card h-full flex flex-col">
+                {/* User header */}
+                <div className="flex items-center justify-between pb-4 border-b border-slate-100 mb-0 flex-shrink-0">
+                  <div>
+                    <h2 className="text-lg font-bold text-slate-900">{selectedUser.email}</h2>
+                    <p className="text-xs text-slate-400 mt-0.5">Joined {new Date(selectedUser.created_at).toLocaleDateString()}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${selectedUser.has_vector ? "bg-green-100 text-green-700" : "bg-slate-100 text-slate-400"}`}>
+                      {selectedUser.has_vector ? "✓ Profile" : "No profile"}
+                    </span>
+                    <span className={`text-xs px-2 py-1 rounded-full font-medium ${selectedUser.has_profile ? "bg-blue-100 text-blue-700" : "bg-slate-100 text-slate-400"}`}>
+                      {selectedUser.has_profile ? "✓ Answers" : "No answers"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Inner tabs */}
+                <div className="flex gap-1 border-b border-slate-100 flex-shrink-0 mt-2">
+                  {(["style", "profiling", "graph"] as const).map((t) => {
+                    const labels = { style: "✨ Learning Style", profiling: "🧠 Profiling Answers", graph: "📊 Profile Graph" };
+                    return (
+                      <button
+                        key={t}
+                        onClick={() => setUserDetailTab(t)}
+                        className={`px-4 py-2.5 text-sm font-medium border-b-2 transition ${
+                          userDetailTab === t
+                            ? "border-indigo-500 text-indigo-600"
+                            : "border-transparent text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        {labels[t]}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Tab content */}
+                <div className="flex-1 pt-5 overflow-y-auto">
+                  {userDetailTab === "style" && (() => {
+                    if (!userSummary) return <p className="text-sm text-slate-400">No personalization data available.</p>;
+                    const SECTIONS = [
+                      { key: "learning_style", icon: "🎯", label: "Learning Style",     color: "bg-indigo-50 border-indigo-200" },
+                      { key: "what_works",     icon: "✅", label: "What Works For You", color: "bg-green-50 border-green-200" },
+                      { key: "complexity",     icon: "📈", label: "Complexity Level",   color: "bg-blue-50 border-blue-200" },
+                      { key: "avoid",          icon: "⚠️", label: "What to Avoid",      color: "bg-amber-50 border-amber-200" },
+                      { key: "unique_trait",   icon: "✨", label: "Your Unique Trait",  color: "bg-purple-50 border-purple-200" },
+                    ];
+                    let sections: Record<string, string> | null = null;
+                    try { if (userSummary.trim().startsWith("{")) sections = JSON.parse(userSummary); } catch {}
+                    if (sections) {
+                      return (
+                        <div className="space-y-3">
+                          {SECTIONS.map(({ key, icon, label, color }) => {
+                            const text = sections![key];
+                            if (!text) return null;
+                            return (
+                              <div key={key} className={`rounded-xl border p-4 ${color}`}>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                                  <span>{icon}</span>{label}
+                                </p>
+                                <p className="text-sm text-slate-700 leading-relaxed">{text}</p>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    }
+                    return <p className="text-sm text-slate-700 leading-relaxed">{userSummary}</p>;
+                  })()}
+
+                  {userDetailTab === "profiling" && (
+                    Object.keys(userAnswers).length === 0
+                      ? <p className="text-sm text-slate-400">No profiling answers recorded.</p>
+                      : <div className="space-y-5">
+                          {Object.entries(userAnswers).map(([q, a], i) => (
+                            <div key={i}>
+                              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">Q{i+1}</p>
+                              <p className="text-sm font-medium text-slate-800 mb-2">{q}</p>
+                              <div className="px-3 py-2 bg-indigo-50 border border-indigo-200 rounded-lg text-sm text-indigo-800">{a}</div>
+                            </div>
+                          ))}
+                        </div>
+                  )}
+
+                  {userDetailTab === "graph" && (
+                    userVector.length > 0
+                      ? <LearnerProfileChart vector={userVector} stacked />
+                      : <p className="text-sm text-slate-400">No vector profile available.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Profiling Question Editor Modal */}
       {isProfilingModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 overflow-y-auto">

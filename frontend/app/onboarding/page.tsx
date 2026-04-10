@@ -104,10 +104,7 @@ export default function OnboardingPage() {
       setError("Please enter an answer before continuing.");
       return;
     }
-    if (currentQ.question_type !== "open" && !(profilingAnswers[currentQ.id]?.length > 0)) {
-      setError("Please select at least one option before continuing.");
-      return;
-    }
+
     setError("");
     if (profilingQuestionIndex < profilingQuestions.length - 1) {
       setProfilingQuestionIndex(profilingQuestionIndex + 1);

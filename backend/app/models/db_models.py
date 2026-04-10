@@ -123,6 +123,8 @@ class QuestionHistory(Base):
     topic = Column(String, nullable=False)
     explanation = Column(String, nullable=False)
     style = Column(String, nullable=False)
+    image_url = Column(String, nullable=True)
+    diagram_svg = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
     user = relationship("User", back_populates="question_history")
