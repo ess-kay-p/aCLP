@@ -1,4 +1,5 @@
 """Onboarding routes using branching questionnaire."""
+import asyncio
 import json
 import logging
 import uuid
@@ -10,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from ..models import StudentProfile
 from ..services.vector_ops import create_zero_vector, VECTOR_MAX, create_style_vector
-from ..services.llm import generate_explanation_variants
+from ..services.llm import generate_explanation_variants, generate_visual_image, generate_single_explanation, generate_diagram_svg
 from ..database import get_db
 from ..models.db_models import UserVector, AdminQuestion, User, Category, SessionVector, QuestionHistory, UserProfilingProfile
 from ..services.auth_service import decode_token
@@ -64,6 +65,8 @@ class PersonalizedExplanationResponse(BaseModel):
     topic: str
     explanation: str
     style: str
+    image_url: Optional[str] = None
+    diagram_svg: Optional[str] = None
 
 
 async def get_optional_user(
@@ -217,6 +220,64 @@ async def get_student_profile_by_session(session_id: str, db: Session = Depends(
         raise
     except Exception:
         logger.exception("get student profile by session failed for session_id='%s'", session_id)
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/personalization-summary")
+async def get_personalization_summary(
+    session_id: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """Generate a rich LLM-based personalization summary from all profiling context."""
+    from ..services.llm import generate_personalization_summary as llm_summary
+
+    try:
+        if current_user:
+            profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.user_id == current_user.id).first()
+            vector_obj = db.query(UserVector).filter(UserVector.user_id == current_user.id).first()
+        elif session_id:
+            profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.session_id == session_id).first()
+            vector_obj = db.query(SessionVector).filter(SessionVector.session_id == session_id).first()
+        else:
+            raise HTTPException(status_code=400, detail="session_id or auth required")
+
+        profile_data = profile.profile_data if profile else {}
+        vector = vector_obj.vector if vector_obj else []
+
+        summary = await asyncio.get_event_loop().run_in_executor(
+            None, lambda: llm_summary(profile_data, vector)
+        )
+        return {"summary": summary}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get personalization summary failed")
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+
+@router.get("/profiling-answers")
+async def get_profiling_answers(
+    session_id: Optional[str] = None,
+    current_user: Optional[User] = Depends(get_optional_user),
+    db: Session = Depends(get_db),
+):
+    """Return the stored profiling Q&A for the current user/session."""
+    try:
+        if current_user:
+            profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.user_id == current_user.id).first()
+        elif session_id:
+            profile = db.query(UserProfilingProfile).filter(UserProfilingProfile.session_id == session_id).first()
+        else:
+            raise HTTPException(status_code=400, detail="session_id or auth required")
+
+        if not profile:
+            return {"answers": {}}
+        return {"answers": profile.profile_data or {}}
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get profiling answers failed")
         raise HTTPException(status_code=500, detail="Internal server error")
 
 
@@ -446,29 +507,40 @@ async def generate_personalized_explanation(
 
     try:
         from ..services.vector_ops import cosine_similarity
+        import asyncio
 
-        # Generate variants (will pick the best one based on student vector)
-        variants = generate_explanation_variants(request.topic, student_vector, profiling_context)
+        # 1. Pick best style via cosine similarity (instant — no LLM call)
+        all_styles = ["sports", "step_by_step", "narrative", "technical", "visual"]
+        best_style = max(
+            all_styles,
+            key=lambda s: cosine_similarity(student_vector, create_style_vector(s)),
+        )
 
-        # Pick the best matching style based on cosine similarity with student vector
-        best_style = None
-        best_score = -1
+        # 2. Generate text first (need labels from [DIAGRAM: ...] before generating image)
+        loop = asyncio.get_event_loop()
+        best_explanation = await loop.run_in_executor(
+            None,
+            lambda: generate_single_explanation(
+                request.topic, best_style, student_vector, profiling_context
+            ),
+        )
 
-        for style in variants.keys():
-            # Create a vector for this style
-            style_vector = create_style_vector(style)
-            # Calculate similarity between student vector and style vector
-            similarity = cosine_similarity(student_vector, style_vector)
-
-            if similarity > best_score:
-                best_score = similarity
-                best_style = style
-
-        # Fallback if no best style found
-        if best_style is None:
-            best_style = list(variants.keys())[0]
-
-        best_explanation = variants[best_style]
+        # 3. For visual style, parse labels then generate SVG + image in parallel
+        image_url = None
+        diagram_svg = None
+        if best_style == "visual":
+            import re
+            diagram_match = re.search(r"\[DIAGRAM(?::\s*([^\]]+))?\]", best_explanation)
+            labels = None
+            if diagram_match and diagram_match.group(1):
+                labels = [l.strip() for l in diagram_match.group(1).split(",") if l.strip()]
+            svg_future = loop.run_in_executor(
+                None, lambda: generate_diagram_svg(request.topic, labels)
+            )
+            img_future = loop.run_in_executor(
+                None, lambda: generate_visual_image(request.topic, labels)
+            )
+            diagram_svg, image_url = await asyncio.gather(svg_future, img_future)
 
         # Persist to history
         history_entry = QuestionHistory(
@@ -477,6 +549,8 @@ async def generate_personalized_explanation(
             topic=request.topic,
             explanation=best_explanation,
             style=best_style,
+            image_url=image_url,
+            diagram_svg=diagram_svg,
         )
         db.add(history_entry)
         db.commit()
@@ -485,6 +559,8 @@ async def generate_personalized_explanation(
             topic=request.topic,
             explanation=best_explanation,
             style=best_style,
+            image_url=image_url,
+            diagram_svg=diagram_svg,
         )
     except Exception as e:
         logger.exception("Error generating explanation for topic '%s'", request.topic)

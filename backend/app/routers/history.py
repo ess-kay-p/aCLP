@@ -35,6 +35,8 @@ class HistoryItemResponse(BaseModel):
     topic: str
     explanation: str
     style: str
+    image_url: Optional[str] = None
+    diagram_svg: Optional[str] = None
     created_at: datetime
 
     class Config:

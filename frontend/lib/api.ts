@@ -256,6 +256,8 @@ export interface PersonalizedExplanation {
   topic: string;
   explanation: string;
   style: string;
+  image_url?: string;
+  diagram_svg?: string;
 }
 
 export async function generatePersonalizedExplanation(
@@ -455,12 +457,30 @@ export async function resetQuestionnaire(): Promise<ApiResponse<{ status: string
   });
 }
 
+// Personalization summary API
+export async function getPersonalizationSummary(sessionId?: string): Promise<ApiResponse<{ summary: string }>> {
+  const url = sessionId
+    ? `/api/onboarding/personalization-summary?session_id=${encodeURIComponent(sessionId)}`
+    : "/api/onboarding/personalization-summary";
+  return fetchApi<{ summary: string }>(url);
+}
+
+// Profiling answers API
+export async function getProfilingAnswers(sessionId?: string): Promise<ApiResponse<{ answers: Record<string, string> }>> {
+  const url = sessionId
+    ? `/api/onboarding/profiling-answers?session_id=${encodeURIComponent(sessionId)}`
+    : "/api/onboarding/profiling-answers";
+  return fetchApi<{ answers: Record<string, string> }>(url);
+}
+
 // History API
 export interface HistoryItem {
   id: number;
   topic: string;
   explanation: string;
   style: string;
+  image_url?: string;
+  diagram_svg?: string;
   created_at: string;
 }
 
@@ -484,4 +504,29 @@ export async function deleteHistoryItem(
 // Health check
 export async function healthCheck(): Promise<ApiResponse<{ status: string }>> {
   return fetchApi<{ status: string }>("/api/health");
+}
+
+// Admin API
+export interface AdminUser {
+  id: number;
+  email: string;
+  created_at: string;
+  has_vector: boolean;
+  has_profile: boolean;
+}
+
+export async function adminListUsers(): Promise<ApiResponse<AdminUser[]>> {
+  return fetchApi<AdminUser[]>("/api/admin/users");
+}
+
+export async function adminGetUserProfile(userId: number): Promise<ApiResponse<{ vector: number[] }>> {
+  return fetchApi<{ vector: number[] }>(`/api/admin/users/${userId}/profile`);
+}
+
+export async function adminGetUserProfilingAnswers(userId: number): Promise<ApiResponse<{ answers: Record<string, string> }>> {
+  return fetchApi<{ answers: Record<string, string> }>(`/api/admin/users/${userId}/profiling-answers`);
+}
+
+export async function adminGetUserPersonalizationSummary(userId: number): Promise<ApiResponse<{ summary: string }>> {
+  return fetchApi<{ summary: string }>(`/api/admin/users/${userId}/personalization-summary`);
 }
