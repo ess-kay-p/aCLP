@@ -148,51 +148,53 @@ def generate_personalization_summary(
     if not profile_data and not vector:
         return "Complete the profiling questions to see your personalized learning summary."
 
-    # Build full profiling Q&A block
-    qa_lines = []
-    if profile_data:
-        for q, a in profile_data.items():
-            qa_lines.append(f"Q: {q}\nA: {a}")
-
-    # Build vector breakdown
-    vector_section = ""
-    if vector and len(vector) >= 8:
-        from ..services.vector_ops import DIMENSIONS
-        scored = sorted(
-            [(DIMENSIONS[i], round(v, 2)) for i, v in enumerate(vector)],
-            key=lambda x: x[1], reverse=True
-        )
-        all_dims = ", ".join(f"{name} {int(val*100)}%" for name, val in scored)
-        vector_section = f"\nLearning dimension scores (high = strong preference):\n{all_dims}"
-
-    qa_block = "\n\n".join(qa_lines)
-    context_block = qa_block + vector_section
-
-    prompt = (
-        "You are a learning analyst. Based on the student's full profiling answers and "
-        "learning dimension scores below, generate a structured personalization profile.\n\n"
-        "Return ONLY a valid JSON object with exactly these 5 keys. Each value should be "
-        "2-4 rich, specific sentences written in second person ('You...'). "
-        "Reference their actual answers where relevant. Be warm, insightful, and concrete.\n\n"
-        "Keys:\n"
-        "- learning_style: Their dominant learning style, preferred explanation format and tone\n"
-        "- what_works: The contexts, analogies, and examples that resonate most with them\n"
-        "- complexity: Their comfort level with technical depth, jargon, and abstraction\n"
-        "- avoid: Things that don't work well — formats, styles, or approaches to skip\n"
-        "- unique_trait: One standout characteristic that makes their learning profile distinctive\n\n"
-        "Return ONLY the JSON object, no markdown, no extra text.\n\n"
-        f"Student profiling data:\n\n{context_block}"
-    )
-
     try:
+        # Build full profiling Q&A block
+        qa_lines = []
+        if profile_data:
+            for q, a in profile_data.items():
+                qa_lines.append(f"Q: {q}\nA: {a}")
+
+        # Build vector breakdown
+        vector_section = ""
+        if vector and len(vector) >= 8:
+            from ..services.vector_ops import DIMENSIONS
+            scored = sorted(
+                [(DIMENSIONS[i], round(v, 2)) for i, v in enumerate(vector)],
+                key=lambda x: x[1], reverse=True
+            )
+            all_dims = ", ".join(f"{name} {int(val*100)}%" for name, val in scored)
+            vector_section = f"\nLearning dimension scores (high = strong preference):\n{all_dims}"
+
+        qa_block = "\n\n".join(qa_lines)
+        context_block = qa_block + vector_section
+
+        prompt = (
+            "You are a learning analyst. Based on the student's full profiling answers and "
+            "learning dimension scores below, generate a structured personalization profile.\n\n"
+            "Return ONLY a valid JSON object with exactly these 5 keys. Each value should be "
+            "2-4 rich, specific sentences written in second person ('You...'). "
+            "Reference their actual answers where relevant. Be warm, insightful, and concrete.\n\n"
+            "Keys:\n"
+            "- learning_style: Their dominant learning style, preferred explanation format and tone\n"
+            "- what_works: The contexts, analogies, and examples that resonate most with them\n"
+            "- complexity: Their comfort level with technical depth, jargon, and abstraction\n"
+            "- avoid: Things that don't work well — formats, styles, or approaches to skip\n"
+            "- unique_trait: One standout characteristic that makes their learning profile distinctive\n\n"
+            "Return ONLY the JSON object, no markdown, no extra text.\n\n"
+            f"Student profiling data:\n\n{context_block}"
+        )
+
         response = litellm.completion(
             model=MODEL,
             messages=[{"role": "user", "content": prompt}],
             temperature=1,
-            max_tokens=600,
             **_llm_kwargs(),
         )
-        content = response.choices[0].message.content.strip()
+        content = response.choices[0].message.content
+        if not content or not content.strip():
+            raise ValueError("Empty LLM response")
+        content = content.strip()
         # Strip markdown fences if present
         if content.startswith("```"):
             lines = content.split("\n")

@@ -223,7 +223,9 @@ export default function LeftSidebar({
     if (type === "style" && !richSummary && !summaryLoading) {
       setSummaryLoading(true);
       getPersonalizationSummary(sessionId).then((res) => {
-        if (res.data?.summary) setRichSummary(res.data.summary);
+        setRichSummary(
+          res.data?.summary || "Your learning profile is ready — ask a question to get started!"
+        );
         setSummaryLoading(false);
       });
     }
@@ -240,16 +242,18 @@ export default function LeftSidebar({
     fetchHistory();
   }, [refreshTick, sessionId]);
 
-  // Fetch summary once when profile is ready; re-fetch if session changes
+  // Fetch summary once when profile is ready; re-fetch if session or profile changes
   useEffect(() => {
     const fetchSummary = async () => {
       setSummaryLoading(true);
       const res = await getPersonalizationSummary(sessionId);
-      if (res.data?.summary) setRichSummary(res.data.summary);
+      setRichSummary(
+        res.data?.summary || "Your learning profile is ready — ask a question to get started!"
+      );
       setSummaryLoading(false);
     };
     fetchSummary();
-  }, [sessionId]);
+  }, [sessionId, profileVector.length]);
 
   const handleDelete = async (e: React.MouseEvent, item: HistoryItem) => {
     e.stopPropagation();

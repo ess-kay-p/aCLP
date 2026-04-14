@@ -252,7 +252,7 @@ async def get_personalization_summary(
         raise
     except Exception:
         logger.exception("get personalization summary failed")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        return {"summary": "Your learning profile is ready — ask a question to see it in action!"}
 
 
 @router.get("/profiling-answers")
